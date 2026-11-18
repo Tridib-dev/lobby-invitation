@@ -1,7 +1,7 @@
 export const INVITE_VERSION= 1 as const;
 
 export const TEMPLATES = ["envelope","terminal","holo-pass"] as const;
-export type TemplateTd = (typeof TEMPLATES)[number];
+export type TemplateId = (typeof TEMPLATES)[number];
 
 
 
@@ -13,7 +13,7 @@ export interface InvitePayload{
     date : string;
     location : string;
     note : string;
-    template : string;
+    template : TemplateId;
     accent : string;
 }
 
