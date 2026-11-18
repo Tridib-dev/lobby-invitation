@@ -127,3 +127,23 @@ export  function decodeInvitePayload(encoded : string) : DecodeResult {
         return { ok : false , error : "Link is corrupted or malformed bruhhh"};
     }
 }
+
+
+// test :
+
+const link = encodeInvitePayload({
+    v : 1 , 
+    title : "Qawwaali night",
+    host : "Tridib",
+    guest : "Tiyas",
+    date : "2026-12-05T18:30:00+05:30",
+    location: "Durgapar",
+    note : "Bring Snacks",
+    template : "terminal",
+    accent : "#33d6a6",
+})
+
+console.log(link)
+console.log(decodeInvitePayload(link));
+console.log(decodeInvitePayload("not-valid!!"));
+console.log(decodeInvitePayload(""));
