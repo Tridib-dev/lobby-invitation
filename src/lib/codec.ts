@@ -107,3 +107,23 @@ export function parseInvitePayload(raw : unknown) : DecodeResult{
 }
 
 
+
+// Encoding the Invite payl;oad in string .... 
+export function encodeInvitePayload(payload :  InvitePayload) : string {
+    const json = JSON.stringify(payload);
+    return bytesToBase64Url(encoder.encode(json));
+}
+
+
+export  function decodeInvitePayload(encoded : string) : DecodeResult {
+    if (encoded.length ===  0 || encoded.length > MAX_ENCODED_LENGTH){
+        return {ok : false , error : "Invalid link length"};
+    }
+
+    try{
+        const json = decoder.decode(base64UrlToBytes(encoded));
+        return parseInvitePayload(JSON.parse(json));
+    }catch{
+        return { ok : false , error : "Link is corrupted or malformed bruhhh"};
+    }
+}
