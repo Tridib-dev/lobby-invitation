@@ -17,6 +17,8 @@ export interface InvitePayload{
     accent : string;
 }
 
+
+//  Dont dare to change the limits or ur software is gonna chole and wont work as expected .. 
 export const LIMITS = {
     title : 80,
     host : 50,
