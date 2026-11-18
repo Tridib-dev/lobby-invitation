@@ -24,7 +24,7 @@ export async function generateMetadata({ params } : Props) : Promise<Metadata> {
         openGraph : {
             title : heading,
             description,
-            images : [{ url : image , width : 1200 , height : 630 }],
+            images : [{ url : image , width : 1200 , height : 630, type : "image/png" , alt: `${title} invitation`}],
         },
         twitter : {card : "summary_large_image", images : [image]},
     };
@@ -59,5 +59,5 @@ export async function InvitePage({params} : Props){
             <InviteContent params={params} />
         </Suspense>
     );
-    
+
 }
