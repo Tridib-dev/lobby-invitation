@@ -1,5 +1,6 @@
 import {decodeInvitePayload} from "@/src/lib/codec";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 
 type Props = { params : Promise<{payload : string}>};
@@ -29,7 +30,7 @@ export async function generateMetadata({ params } : Props) : Promise<Metadata> {
     };
 }
 
-export default async function InvitePage({params} : Props) {
+export default async function InviteContent({params} : Props) {
     const { payload }  = await params;
     const result = decodeInvitePayload(payload);
 
@@ -43,4 +44,20 @@ export default async function InvitePage({params} : Props) {
             <p>Hosted by {result.value.host}</p>
         </main>
     )
+}
+
+
+export async function InvitePage({params} : Props){
+    return(
+        <Suspense
+            fallback = {
+                <main className="flex min-h-screen items-center justify-center">
+                    Loading your invitation ...
+                </main>
+            }
+        >
+            <InviteContent params={params} />
+        </Suspense>
+    );
+    
 }
