@@ -1,6 +1,30 @@
-This is an opensource project that can be included with any ti pe of event application whereecver Sending invitation matters or needed .
+# lobby-invitation
 
-there are tons of feature and templates to try andd send the invitations directly through several social media appliactions as well as  messaging application
+An open-source invitation card generator for events. Fill in the details,
+get a shareable link, and paste it into WhatsApp, Discord or Slack. The
+link shows a preview card, and guests open an interactive invitation.
+
+
+
+
+## How it works
+
+There is no database. The whole invitation (title, host, guest, date,
+location, note, template, accent colour) is encoded into the URL itself
+as UTF-8 safe base64url, so a link is all you need to share an invite.
+
+Links are untrusted input: every decoded payload is validated and
+sanitized before it is rendered.
+
+
+## Status
+
+- [x] Data model and stateless URL codec (emoji safe, validated)
+- [ ] Dynamic Open Graph preview card
+- [ ] Creator studio with live preview
+- [ ] Guest page with templates (envelope, terminal, holo pass) and RSVP
+
+
 
 ## Getting Started
 
