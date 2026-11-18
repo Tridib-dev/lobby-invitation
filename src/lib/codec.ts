@@ -51,7 +51,10 @@ export type DecodeResult =
 function cleanString(value : unknown, max : number) : string {
     if (typeof value !== "string") return "";
 
-    const stripped = value.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim();
+    const stripped = value
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+        .trim();
 
     return Array.from(stripped).slice(0,max).join("");
 }
