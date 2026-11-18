@@ -15,6 +15,7 @@ export interface InvitePayload{
     note : string;
     template : TemplateId;
     accent : string;
+    fields?: Record<string, string>;
 }
 
 
@@ -28,4 +29,4 @@ export const LIMITS = {
 } as const;
 
 export const DEFAULT_ACCENT = "#ec3750";
-
+export const DEFAULT_TEMPLATE = "classic"
