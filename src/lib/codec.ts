@@ -1,3 +1,14 @@
+import{
+    DEFAULT_ACCENT,
+    INVITE_VERSION,
+    LIMITS,
+    TEMPLATES,
+    type InvitePayload,
+    type TemplateId,
+} from "@/src/types/invite" ;
+
+
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal : true});
 
@@ -31,6 +42,65 @@ function  base64UrlToBytes(input:string):Uint8Array{
     return bytes;
 }
 
-const test = new Uint8Array([0xfb,0xff,0xfe]);
-const s = bytesToBase64Url(test);
-console.log(s, base64UrlToBytes(s));
+const MAX_ENCODED_LENGTH = 4000;
+export type DecodeResult = 
+| { ok : true ; value : InvitePayload }
+| { ok : false ; error : string };
+
+
+function cleanString(value : unknown, max : number) : string {
+    if (typeof value !== "string") return "";
+
+    const stripped = value.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim();
+
+    return Array.from(stripped).slice(0,max).join("");
+}
+
+
+function isTemplate(value : unknown):value is TemplateId {
+    return (
+        typeof value === "string" && 
+        (TEMPLATES as readonly string[]).includes(value)
+    );
+}
+
+
+export function parseInvitePayload(raw : unknown) : DecodeResult{
+    if(typeof raw !== "object" || raw === null) {
+        return { ok : false , error : "Payload is not an object"};
+    } 
+
+    const r = raw as Record<string, unknown> ;
+
+    if (r.v !== INVITE_VERSION) {
+        return {ok : false , error : "Unsupported invite version" }
+    }
+
+    const title = cleanString(r.title,LIMITS.title);
+    if(!title) return {ok: false , error : "Title is required"};
+
+    const date = cleanString(r.date,40);
+    if (Number.isNaN(Date.parse(date))){
+        return {ok : false , error : "Invalid date"};
+    }
+
+    const accent = 
+        typeof r.accent ==="string" && /^#[0-9a-fA-F]{6}$/.test(r.accent) ? r.accent : DEFAULT_ACCENT;
+    
+        return {
+            ok : true,
+            value : {
+                v : INVITE_VERSION,
+                title,
+                host: cleanString(r.host,LIMITS.host),
+                guest : cleanString(r.guest , LIMITS.guest),
+                date,
+                location : cleanString(r.location,LIMITS.location),
+                note: cleanString(r.note,LIMITS.note),
+                template : isTemplate(r.template) ? r.template : "envelope",
+                accent,
+            },
+        };
+}
+
+
