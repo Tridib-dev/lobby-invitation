@@ -23,12 +23,17 @@ const FLAP_SEG = 20;
 
 // depth layout (z axis, towards the camera)
 const BACK_DEPTH = 0.05;
-const Z_LETTER = 0.015;
+const Z_LETTER = 0.02;
 const Z_POCKET = 0.05;
 const POCKET_DEPTH = 0.03;
 const Z_FRONT = Z_POCKET + POCKET_DEPTH + 0.01; // front surface of the pocket
 const Z_FLAP_CLOSED = Z_FRONT + 0.035;
-const Z_FLAP_OPEN = -0.02;
+const Z_FLAP_OPEN = -0.03;
+
+const LW = 2.6; // letter sizeee
+const LH = 1.77;
+const LETTER_Y0 = -0.02;
+const LETTER_RISE_Y = 1.9; 
 
 type Progress = { seal: number; flap: number; rise: number; present: number };
 
@@ -570,38 +575,40 @@ function Letter({
   bump: THREE.Texture;
 }) {
   const ref = useRef<THREE.Mesh>(null);
-  const geo = useMemo(() => new THREE.PlaneGeometry(2.8, 1.9, 12, 8), []);
+  const geo = useMemo(() => new THREE.PlaneGeometry(LW, LH, 12, 8), []);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const m = ref.current;
     if (!m) return;
-    const { rise, present } = P.current;
-    const p = smooth(present);
-    const pull = smooth(clamp01((rise - 0.5) / 0.4)); // moves in front of the pocket once clear
-    const hand = Math.sin(Math.PI * clamp01(rise)) * (1 - p);
+    const { rise, present: q } = P.current;
 
-    const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(-0.02, 1.7, rise), 0.3, p);
-    const z = Z_LETTER + 0.12 * pull + 1.55 * p;
-    const sway = Math.sin(clock.elapsedTime * 1.3) * 0.012 * rise * (1 - p);
+    const hand = Math.sin(Math.PI * clamp01(rise)) * (1 - clamp01(q));
+    const zq = smooth(clamp01(q / 0.4)); // comes forward first...
+    const yq = smooth(clamp01((q - 0.25) / 0.75)); // ...and only then moves down
+    const sq = smooth(q);
+
+    const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(LETTER_Y0, LETTER_RISE_Y, rise), 0.3, yq);
+    const z = Z_LETTER + 0.35 * zq + 1.2 * sq;
 
     m.position.set(0, y, z);
-    m.rotation.set(-0.09 * hand - 0.05 * p + sway, 0, 0.05 * hand + sway * 0.6);
-    m.scale.setScalar(THREE.MathUtils.lerp(1, 1.25, p));
+    // no pitch while inside the pocket; only a slight roll, like a hand pulling
+    m.rotation.set(-0.06 * sq, 0, 0.035 * hand);
+    m.scale.setScalar(1 + 0.25 * sq);
 
-    // the paper flexes while it is pulled, then relaxes
-    const bow = 0.16 * hand;
+    // tiny flex, strongest at the top edge so the bottom never touches the panels
+    const bow = 0.05 * hand;
     const g = m.geometry;
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
-      const t = (pos.getY(i) / 0.95 + 1) / 2;
-      pos.setZ(i, bow * t * t);
+      const t = (pos.getY(i) / (LH / 2) + 1) / 2;
+      pos.setZ(i, bow * t * t * t);
     }
     pos.needsUpdate = true;
     g.computeVertexNormals();
   });
 
   return (
-    <mesh ref={ref} geometry={geo} position={[0, -0.02, Z_LETTER]} castShadow receiveShadow>
+    <mesh ref={ref} geometry={geo} position={[0, LETTER_Y0, Z_LETTER]} castShadow receiveShadow>
       <meshStandardMaterial map={map} roughness={0.9} bumpMap={bump} bumpScale={0.35} side={THREE.DoubleSide} />
     </mesh>
   );
@@ -673,44 +680,42 @@ function Scene({
   onOpen: () => void;
   onOpened?: () => void;
 }) {
-  const P = useRef<Progress>({ seal: 0, flap: 0, rise: 0, present: 0 });
-  const rig = useRef<THREE.Group>(null);
-  const bump = useMemo(() => makePaperBump(), []);
-  const back = useMemo(() => backGeometry(), []);
-  const pocket = useMemo(() => pocketGeometry(), []);
-  const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
-  const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern), [theme]);
-  const sealColor = accent ?? theme.seal.color;
-  const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
+    const P = useRef<Progress>({ seal: 0, flap: 0, rise: 0, present: 0 });
+    const rig = useRef<THREE.Group>(null);
+    const bump = useMemo(() => makePaperBump(), []);
+    const back = useMemo(() => backGeometry(), []);
+    const pocket = useMemo(() => pocketGeometry(), []);
+    const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
+    const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern), [theme]);
+    const sealColor = accent ?? theme.seal.color;
+    const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
-  const openedRef = useRef(onOpened);
-  useEffect(() => {
-    openedRef.current = onOpened;
-  });
+    const openedRef = useRef(onOpened);
+    useEffect(() => {
+        openedRef.current = onOpened;
+    });
 
-  useEffect(() => {
-    if (!open) return;
-    const p = P.current;
-    const tl = gsap.timeline({ onComplete: () => openedRef.current?.() });
-    tl.to(p, { seal: 1, duration: 0.9, ease: "power2.out" }, 0)
-      .addLabel("flap", 0.45)
-      .to(p, { flap: 1, duration: 1.1, ease: "power2.inOut" }, "flap")
-      // the letter only starts once the flap is well past vertical
-      .to(p, { rise: 1, duration: 1.25, ease: "power3.out" }, "flap+=0.8")
-      .to(p, { present: 1, duration: 1.2, ease: "power2.inOut" }, "flap+=1.55");
-    return () => {
-      tl.kill();
-    };
-  }, [open]);
+    useEffect(() => {
+        if (!open) return;
+            const p = P.current;
+            const tl = gsap.timeline({ onComplete: () => openedRef.current?.() });
+            tl.to(p, { seal: 1, duration: 0.9, ease: "power2.out" }, 0)
+                .addLabel("flap", 0.35)
+                .to(p, { flap: 1, duration: 0.9, ease: "power2.inOut" }, "flap")
+                .to(p, { rise: 1, duration: 1.0, ease: "power2.inOut" }, "flap+=0.85")
+                .to(p, { present: 1, duration: 1.0, ease: "power2.inOut" }, "flap+=1.8");
+            return () => {
+                tl.kill();
+            };
+    }, [open]);
 
-  // tilt towards the camera for depth, follow the pointer, straighten when presenting
-  useFrame(({ pointer }) => {
+    useFrame(() => {
     const g = rig.current;
     if (!g) return;
     const k = 1 - smooth(P.current.present);
-    g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, (-0.2 - pointer.y * 0.1) * k, 0.08);
-    g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, (0.22 + pointer.x * 0.15) * k, 0.08);
-  });
+    g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, -0.2 * k, 0.08);
+    g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, 0.22 * k, 0.08);
+    });
 
   return (
     <>
@@ -772,7 +777,7 @@ export default function Envelope3D({
   const [open, setOpen] = useState(false);
   return (
     <div style={{ width: "100%", maxWidth: 720, height: 560 }}>
-      <Canvas shadows="soft" camera={{ position: [0.4, 0.8, 8.5], fov: 35, near: 0.5, far: 30 }} dpr={[1, 2]}>
+      <Canvas shadows="soft" camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }} dpr={[1, 2]}>
         <Scene
           open={open}
           theme={theme}
