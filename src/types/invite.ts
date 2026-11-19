@@ -3,6 +3,11 @@ export const INVITE_VERSION= 1 as const;
 export const TEMPLATES = ["envelope","terminal","holo-pass"] as const;
 export type TemplateId = (typeof TEMPLATES)[number];
 
+export const CARD_TEMPLATES = [ "editorial","botanical","gallery","ceremony","modernist",] as const;
+export type CardTemplateId = (typeof CARD_TEMPLATES)[number];
+
+export const ENVELOPE_TEMPLATES = ["loom","fancy","petal","abstract","nocturne",] as const;
+export type EnvelopeTemplateId = (typeof ENVELOPE_TEMPLATES)[number];
 
 
 export interface InvitePayload{
@@ -14,6 +19,8 @@ export interface InvitePayload{
     location : string;
     note : string;
     template : string;
+    envelopeTemplate?: EnvelopeTemplateId;
+    cardTemplate?: CardTemplateId;
     accent : string;
     fields?: Record<string, string>;
 }
