@@ -35,8 +35,7 @@ const LH = 1.77;
 const LETTER_Y0 = -0.02;
 const LETTER_RISE_Y = 1.9; 
 
-type Progress = { seal: number; flap: number; rise: number; present: number };
-
+type Progress = { seal: number; flap: number; pull: number };
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const smooth = (n: number) => n * n * (3 - 2 * n);
 
@@ -232,7 +231,7 @@ const RINGS = 40;
 const SEGS = 128;
 
 const radiusAt = (a: number) =>
-  SEAL_R * (1 + 0.07 * Math.sin(3 * a + 1) + 0.05 * Math.sin(5 * a + 2) + 0.03 * Math.sin(7 * a + 4));
+  SEAL_R * (1 + 0.018 * Math.sin(3 * a + 1) + 0.012 * Math.sin(5 * a + 2));
 
 function profile(rn: number): number {
   const edge = smooth(clamp01((1 - rn) / 0.14));
@@ -396,7 +395,7 @@ function makeSealTextures(emblem: string, color: string,  metal: boolean) {
     g.beginPath();
     g.arc(S / 2, S / 2, 158, 0, Math.PI * 2);
     g.stroke();
-    g.drawImage(emblemCanvas(emblem, S, "rgba(255,255,255,0.4)", FONT), 3, 3);
+    g.drawImage(emblemCanvas(emblem, S, shadeHex(color, -0.5), FONT), 0, 0);
     g.drawImage(emblemCanvas(emblem, S, metal ? shadeHex(color, 0.45) : shadeHex(color, -0.55), FONT), 0, 0);
     const map = new THREE.CanvasTexture(mc);
     map.colorSpace = THREE.SRGBColorSpace;
@@ -470,12 +469,12 @@ function Seal({ P, color, emblem, metal, onOpen }: { P: React.RefObject<Progress
                 bumpMap={tex.height}
                 bumpScale={metal ? 4 : 3}
                 displacementScale={metal ? 0.05 : 0.04}
-                metalness={metal ? 1 : 0}
-                roughness={metal ? 0.22 : 0.3}
+                metalness={metal ? 0.9 : 0}
+                roughness={metal ? 0.38 : 0.3}
                 clearcoat={metal ? 0 : 0.85}
                 clearcoatRoughness={0.18}
                 side={THREE.DoubleSide}
-                envMapIntensity={metal ? 1.8 : 1}
+                envMapIntensity={metal ? 1.1 : 1}
                 transparent
             />
             </mesh>
@@ -602,42 +601,42 @@ function Letter({
   map: THREE.Texture;
   bump: THREE.Texture;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const geo = useMemo(() => new THREE.PlaneGeometry(LW, LH, 12, 8), []);
+    const ref = useRef<THREE.Mesh>(null);
+    const geo = useMemo(() => new THREE.PlaneGeometry(LW, LH, 12, 8), []);
 
-  useFrame(() => {
-    const m = ref.current;
-    if (!m) return;
-    const { rise, present: q } = P.current;
+    useFrame(() => {
+        const m = ref.current;
+        if (!m) return;
+        const u = P.current.pull;
 
-    const hand = Math.sin(Math.PI * clamp01(rise)) * (1 - clamp01(q));
-    const zq = smooth(clamp01(q / 0.4)); // comes forward first...
-    const yq = smooth(clamp01((q - 0.25) / 0.75)); // ...and only then moves down
-    const sq = smooth(q);
+        const up = clamp01(u / 0.6);
+        const rise = 1 - (1 - up) * (1 - up); // fast start, eases out
+        const d = clamp01((u - 0.5) / 0.5);
+        const zq = smooth(clamp01(d / 0.35)); // comes forward once clear of the pocket
+        const yq = smooth(clamp01((d - 0.35) / 0.65)); // then settles to centre
+        const hand = Math.sin(Math.PI * up) * (1 - zq);
 
-    const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(LETTER_Y0, LETTER_RISE_Y, rise), 0.3, yq);
-    const z = Z_LETTER + 0.35 * zq + 1.2 * sq;
+        const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(LETTER_Y0, LETTER_RISE_Y, rise), 0.3, yq);
+        const z = Z_LETTER + 0.35 * zq + 1.2 * yq;
 
-    m.position.set(0, y, z);
-    // no pitch while inside the pocket; only a slight roll, like a hand pulling
-    m.rotation.set(-0.06 * sq, 0, 0.035 * hand);
-    m.scale.setScalar(1 + 0.25 * sq);
+        m.position.set(0, y, z);
+        m.rotation.set(-0.06 * yq, 0, 0.035 * hand);
+        m.scale.setScalar(1 + 0.25 * yq);
 
-    // tiny flex, strongest at the top edge so the bottom never touches the panels
-    const bow = 0.05 * hand;
-    const g = m.geometry;
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const t = (pos.getY(i) / (LH / 2) + 1) / 2;
-      pos.setZ(i, bow * t * t * t);
-    }
-    pos.needsUpdate = true;
-    g.computeVertexNormals();
-  });
+        const bow = 0.05 * hand;
+        const g = m.geometry;
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const t = (pos.getY(i) / (LH / 2) + 1) / 2;
+            pos.setZ(i, bow * t * t * t);
+        }
+        pos.needsUpdate = true;
+        g.computeVertexNormals();
+    });
 
   return (
     <mesh ref={ref} geometry={geo} position={[0, LETTER_Y0, Z_LETTER]} castShadow receiveShadow>
-      <meshStandardMaterial map={map} roughness={0.9} bumpMap={bump} bumpScale={0.35} side={THREE.DoubleSide} />
+        <meshStandardMaterial map={map} roughness={0.9} bumpMap={bump} bumpScale={0.35} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -693,6 +692,8 @@ function pocketGeometry() {
 
 /* ---------------- scene ---------------- */
 
+
+
 function Scene({
   open,
   theme,
@@ -708,7 +709,7 @@ function Scene({
   onOpen: () => void;
   onOpened?: () => void;
 }) {
-    const P = useRef<Progress>({ seal: 0, flap: 0, rise: 0, present: 0 });
+    const P = useRef<Progress>({ seal: 0, flap: 0, pull: 0 });
     const rig = useRef<THREE.Group>(null);
     const bump = useMemo(() => makePaperBump(), []);
     const back = useMemo(() => backGeometry(), []);
@@ -725,73 +726,72 @@ function Scene({
 
     useEffect(() => {
         if (!open) return;
-            const p = P.current;
-            const tl = gsap.timeline({ onComplete: () => openedRef.current?.() });
-            tl.to(p, { seal: 1, duration: 0.9, ease: "power2.out" }, 0)
-                .addLabel("flap", 0.35)
-                .to(p, { flap: 1, duration: 0.9, ease: "power2.inOut" }, "flap")
-                .to(p, { rise: 1, duration: 1.0, ease: "power2.inOut" }, "flap+=0.85")
-                .to(p, { present: 1, duration: 1.0, ease: "power2.inOut" }, "flap+=1.8");
-            return () => {
-                tl.kill();
-            };
+        const p = P.current;
+        const tl = gsap.timeline({ onComplete: () => openedRef.current?.() });
+        tl.to(p, { seal: 1, duration: 0.9, ease: "power2.out" }, 0)
+            .addLabel("flap", 0.35)
+            .to(p, { flap: 1, duration: 0.9, ease: "power2.inOut" }, "flap")
+            .to(p, { pull: 1, duration: 2.2, ease: "power1.inOut" }, "flap+=0.8");
+        return () => {
+            tl.kill();
+        };
     }, [open]);
 
     useFrame(() => {
-    const g = rig.current;
-    if (!g) return;
-    const k = 1 - smooth(P.current.present);
-    g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, -0.2 * k, 0.08);
-    g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, 0.22 * k, 0.08);
+        const g = rig.current;
+        if (!g) return;
+        const k = 1 - smooth(clamp01((P.current.pull - 0.5) / 0.5));
+        g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, -0.2 * k, 0.08);
+        g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, 0.22 * k, 0.08);
     });
 
-  return (
-    <>
-      <Environment resolution={256}>
-        <Lightformer form="rect" intensity={4} position={[0, 5, 5]} scale={[10, 4, 1]} target={[0, 0, 0]} />
-        <Lightformer form="rect" intensity={2} position={[-5, 1, 3]} scale={[4, 6, 1]} target={[0, 0, 0]} />
-        <color attach="background" args={["#3a352e"]} />
-        <Lightformer form="ring" intensity={6} color="#fff1cc" position={[0, 2, 4]} scale={3} target={[0, 0, 0]} />
-        <Lightformer form="rect" intensity={5} color="#ffffff" position={[3, -1, 4]} scale={[2, 5, 1]} target={[0, 0, 0]} />
-      </Environment>
-      <hemisphereLight args={["#fff4e6", "#2a2438", 0.3]} />
-      <directionalLight
-        position={[-3.5, 4.5, 6]}
-        intensity={2.6}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-radius={5}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-4}
-        shadow-camera-right={4}
-        shadow-camera-top={4}
-        shadow-camera-bottom={-4}
-      />
+    return (
+        <>
+            <Environment resolution={256}>
+                <Lightformer form="rect" intensity={4} position={[0, 5, 5]} scale={[10, 4, 1]} target={[0, 0, 0]} />
+                <Lightformer form="rect" intensity={2} position={[-5, 1, 3]} scale={[4, 6, 1]} target={[0, 0, 0]} />
+                <color attach="background" args={["#3a352e"]} />
+                <Lightformer form="ring" intensity={3} color="#fff1cc" position={[0, 2, 4]} scale={3} target={[0, 0, 0]} />
+                <Lightformer form="rect" intensity={2.5} color="#ffffff" position={[3, -1, 4]} scale={[2, 5, 1]} target={[0, 0, 0]} />
+            </Environment>
+            <hemisphereLight args={["#fff4e6", "#2a2438", 0.3]} />
+            <directionalLight
+                position={[-3.5, 4.5, 6]}
+                intensity={2.6}
+                castShadow
+                shadow-mapSize={[2048, 2048]}
+                shadow-radius={5}
+                shadow-bias={-0.0004}
+                shadow-normalBias={0.02}
+                shadow-camera-left={-4}
+                shadow-camera-right={4}
+                shadow-camera-top={4}
+                shadow-camera-bottom={-4}
+            />
 
-      <group ref={rig} position={[0, -0.3, 0]}>
-        {/* thick back panel: liner on the inside, paper on the edges */}
-        <mesh geometry={back} position={[0, 0, -(BACK_DEPTH + 0.01)]} receiveShadow castShadow>
-          <meshStandardMaterial attach="material-0" map={inside} roughness={0.9} bumpMap={bump} bumpScale={0.5} />
-          <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
-        </mesh>
+            <group ref={rig} position={[0, -0.3, 0]}>
+                {/* thick back panel: liner on the inside, paper on the edges */}
+                <mesh geometry={back} position={[0, 0, -(BACK_DEPTH + 0.01)]} receiveShadow castShadow>
+                <meshStandardMaterial attach="material-0" map={inside} roughness={0.9} bumpMap={bump} bumpScale={0.5} />
+                <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
+                </mesh>
 
-        <Letter P={P} map={letterTex} bump={bump} />
+                <Letter P={P} map={letterTex} bump={bump} />
 
-        {/* thick front pocket */}
-        <mesh geometry={pocket} position={[0, 0, Z_POCKET]} castShadow receiveShadow>
-          <meshStandardMaterial attach="material-0" map={outside} roughness={0.88} bumpMap={bump} bumpScale={0.5} />
-          <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
-        </mesh>
+                {/* thick front pocket */}
+                <mesh geometry={pocket} position={[0, 0, Z_POCKET]} castShadow receiveShadow>
+                    <meshStandardMaterial attach="material-0" map={outside} roughness={0.88} bumpMap={bump} bumpScale={0.5} />
+                    <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
+                </mesh>
 
-        <FlapShadow P={P} />
-        <Flap P={P} outside={outside} inside={inside} shape={theme.flap} bump={bump} />
-        <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
-     </group>
+                <FlapShadow P={P} />
+                <Flap P={P} outside={outside} inside={inside} shape={theme.flap} bump={bump} />
+                <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
+            </group>
 
-      <ContactShadows position={[0, -H / 2 - 0.5, 0]} opacity={0.5} scale={9} blur={2.6} far={3} />
-    </>
-  );
+            <ContactShadows position={[0, -H / 2 - 0.5, 0]} opacity={0.5} scale={9} blur={2.6} far={3} />
+        </>
+    );
 }
 
 export default function Envelope3D({
