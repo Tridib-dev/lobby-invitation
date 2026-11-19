@@ -149,4 +149,60 @@ function wrap(g : CanvasRenderingContext2D , text : string , maxW: number) : str
     return lines.slice(0,3);
 }
 
+function makeLetterTexture(c: LetterContent, accent: string): THREE.CanvasTexture {
+  const CW = 1024;
+  const CH = 696;
+  const cv = document.createElement("canvas");
+  cv.width = CW;
+  cv.height = CH;
+  const g = cv.getContext("2d")!;
+  g.fillStyle = "#fffaf0";
+  g.fillRect(0, 0, CW, CH);
+  for (let i = 0; i < 6000; i++) {
+    g.fillStyle = `rgba(120,100,70,${Math.random() * 0.05})`;
+    g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 3, 1);
+  }
+  g.strokeStyle = accent;
+  g.lineWidth = 3;
+  g.strokeRect(36, 36, CW - 72, CH - 72);
+  g.lineWidth = 1;
+  g.strokeRect(48, 48, CW - 96, CH - 96);
 
+  g.textAlign = "center";
+  g.textBaseline = "alphabetic";
+
+  g.fillStyle = accent;
+  g.font = "italic 36px Georgia, serif";
+  g.fillText(c.guest ? `${c.guest}, you’re invited` : "You’re invited", CW / 2, 140);
+
+  g.fillStyle = "#2b2118";
+  fit(g, c.title, CW - 180, 80, (s) => `bold ${s}px Georgia, serif`);
+  g.fillText(c.title, CW / 2, 262);
+
+  g.fillStyle = accent;
+  g.fillRect(CW / 2 - 60, 300, 120, 3);
+
+  g.fillStyle = "#2b2118";
+  g.font = "34px Georgia, serif";
+  g.fillText(c.date, CW / 2, 380);
+  if (c.location) g.fillText(c.location, CW / 2, 430);
+
+  if (c.note) {
+    g.font = "italic 28px Georgia, serif";
+    g.fillStyle = "#5a4a3a";
+    wrap(g, c.note, CW - 220).forEach((line, i) => g.fillText(line, CW / 2, 510 + i * 40));
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+
+/* ---------------- custome wax seal [ Lobby logo to be added leatweer ]: sculpted hieght-field in some uneven pieces ---------------- */
+
+const SEAL_R = 0.3;
+const UVR = SEAL_R * 1.15;
+const RINGS = 28;
+const SEGS = 96;
