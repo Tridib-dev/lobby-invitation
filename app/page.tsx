@@ -1,19 +1,20 @@
 "use client";
 
 import { useState , type FormEvent } from "react";
-import { encodeInvitePayload } from "@/src/lib/codec";
+import { decodeInvitePayload, encodeInvitePayload } from "@/src/lib/codec";
 import { DEFAULT_ACCENT, INVITE_VERSION, LIMITS , type InvitePayload } from "@/src/types/invite";
 
 
 export default function Home() {
   const [InviteUrl,setInviteUrl ] = useState("");
   const [shareMessage, setShareMessage] = useState("");
-
+  const [guest, setGuest] = useState("");
   function createInvite(event : FormEvent<HTMLFormElement>) {
     event.preventDefault();
   
     const data = new FormData(event.currentTarget);
-
+    const guestName = String(data.get("guest") ?? "");
+    setGuest(guestName);
     const payload : InvitePayload = {
       v : INVITE_VERSION,
       title : String(data.get("title") ?? ""),
@@ -38,7 +39,7 @@ export default function Home() {
   async function shareInvite() {
     const shareData = {
       title : "You're invited",
-      text : "Here's your invitation. Hope uyou can amke it",
+      text : `Here's your invitation. Hope you can make it, ${guest} ! 🥂`,
       url : InviteUrl,
     };
 
