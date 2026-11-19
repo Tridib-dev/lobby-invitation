@@ -130,3 +130,23 @@ function fit(g: CanvasRenderingContext2D, text: string, maxW: number, start: num
     g.font = font(s);
   }
 }
+
+
+function wrap(g : CanvasRenderingContext2D , text : string , maxW: number) : string[] {
+    const lines: string[] = [];
+    let cur = "";
+    for (const word of text.split(/\s+/).filter(Boolean)) {
+        const t = cur ? `${cur} ${word}` : word;
+        if (g.measureText(t).width > maxW && cur) {
+        lines.push(cur);
+        cur = word;
+        } else {
+        cur = t;
+        }
+    }
+
+    if (cur) lines.push(cur);
+    return lines.slice(0,3);
+}
+
+
