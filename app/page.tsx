@@ -3,10 +3,14 @@
 import { useState , type FormEvent } from "react";
 import { encodeInvitePayload } from "@/src/lib/codec";
 import { DEFAULT_ACCENT, INVITE_VERSION, LIMITS , type InvitePayload } from "@/src/types/invite";
+import { error } from "console";
+import Error from "next/error";
+import { p } from "motion/react-client";
 
 
 export default function Home() {
   const [InviteUrl,setInviteUrl ] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
 
   function createInvite(event : FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +37,34 @@ export default function Home() {
     setInviteUrl(
       `${window.location.origin}/i/${encoded}`
     );
+  }
+  async function shareInvite() {
+    const shareData = {
+      title : "You're invited",
+      text : "Here's your invitation. Hope uyou can amke it",
+      url : InviteUrl,
+    };
+
+    try {
+      if(navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(InviteUrl);
+      setShareMessage("Share sheet unavailable. Link copied instead");
+    } catch(err) {
+      if (error instanceof Error && error.name ==="AbortError"){
+        return;
+      }
+      
+      try {
+        await navigator.clipboard.writeText(InviteUrl);
+        setShareMessage("Link copied successfully");
+      } catch (err) {
+        setShareMessage("Unable to share. Please copy the link manually");
+      }
+    }
   }
   return (
     <main className="min-h-screen bg-neutral-50 px-6 py-12 text-neutral-900">
@@ -127,6 +159,20 @@ export default function Home() {
             >
               Open invitation
             </a>
+
+            <button
+              type="button"
+              onClick={shareInvite}
+              className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 transition"
+            >
+              Share invitation ↗
+            </button>
+
+            {shareMessage && (
+              <p className="mt-3 text-sm text-neutral-500" >
+                {shareMessage}
+              </p>
+            )}
 
             <button
               type="button"
