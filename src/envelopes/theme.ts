@@ -50,7 +50,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     liner: "#0f1626",
     linerPattern: none,
     flap: "pointed",
-    seal: { color: "#b8c0d0", emblem: "★" },
+    seal: { color: "#b8c0d0", emblem: "🌠" },
   },
   {
     id: "blush",
@@ -60,7 +60,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     liner: "#fff1f3",
     linerPattern: { kind: "dots", color: "#d6336c", opacity: 0.2, tiles: 16 },
     flap: "rounded",
-    seal: { color: "#d6336c", emblem: "♥" },
+    seal: { color: "#d6336c", emblem: "🌹" },
   },
 ];
 
