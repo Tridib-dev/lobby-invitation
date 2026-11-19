@@ -15,7 +15,7 @@ export interface EnvelopeTheme {
   liner: string;
   linerPattern: SurfacePattern;
   flap: "pointed" | "rounded";
-  seal: { color: string; emblem: string };
+  seal: { color: string; emblem: string; finish?: "wax" | "metal" };
 }
 
 const none : SurfacePattern = { kind : "none" , color : "#000000" , opacity : 0 , tiles: 1};
@@ -30,7 +30,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     liner: "#c9a85c",
     linerPattern: { kind: "dots", color: "#f3ead8", opacity: 0.25, tiles: 14 },
     flap: "pointed",
-    seal: { color: "#8c1c2b", emblem: "♥" },
+    seal: { color: "#c9a24a", emblem: "sprig", finish: "metal" },
   },
   {
     id: "kraft",
@@ -50,7 +50,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     liner: "#0f1626",
     linerPattern: none,
     flap: "pointed",
-    seal: { color: "#b8c0d0", emblem: "🌠" },
+    seal: { color: "#b8c0d0", emblem: "sprig", finish: "metal" }, 
   },
   {
     id: "blush",

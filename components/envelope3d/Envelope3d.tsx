@@ -329,56 +329,94 @@ function buildSealPieces(): SealPiece[] {
   });
 }
 
-// the emblem as a solid silhouette (works for emoji too)
+function drawSprig(g: CanvasRenderingContext2D, S: number) {
+  g.save();
+  g.translate(S / 2, S / 2);
+  g.lineCap = "round";
+  g.lineWidth = S * 0.018;
+  g.beginPath();
+  g.moveTo(0, S * 0.2);
+  g.quadraticCurveTo(S * 0.02, 0, 0, -S * 0.2);
+  g.stroke();
+  for (let i = 0; i < 5; i++) {
+    const y = S * 0.14 - i * S * 0.07;
+    const len = S * (0.13 - i * 0.012);
+    for (const side of [-1, 1]) {
+      g.save();
+      g.translate(0, y);
+      g.rotate(side * 0.9);
+      g.beginPath();
+      g.ellipse(0, -len / 2, len * 0.28, len / 2, 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
+  }
+  g.beginPath();
+  g.ellipse(0, -S * 0.2, S * 0.035, S * 0.06, 0, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+}
+
 function emblemCanvas(emblem: string, size: number, fill: string, fontPx: number): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d")!;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.font = `${fontPx}px serif`;
-  g.fillText(emblem, size / 2, size / 2 + fontPx * 0.04);
+  if (emblem === "sprig") {
+    g.fillStyle = "#000";
+    g.strokeStyle = "#000";
+    drawSprig(g, size);
+  } else {
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.font = `${fontPx}px serif`;
+    g.fillText(emblem, size / 2, size / 2 + fontPx * 0.04);
+  }
   g.globalCompositeOperation = "source-in";
   g.fillStyle = fill;
   g.fillRect(0, 0, size, size);
   return c;
 }
 
-function makeSealTextures(emblem: string, color: string) {
-  const S = 512;
-  const FONT = 210;
+function makeSealTextures(emblem: string, color: string,  metal: boolean) {
+    const S = 512;
+    const FONT = 210;
 
-  const mc = document.createElement("canvas");
-  mc.width = mc.height = S;
-  const g = mc.getContext("2d")!;
-  g.fillStyle = color;
-  g.fillRect(0, 0, S, S);
-  const grad = g.createRadialGradient(S * 0.38, S * 0.34, 10, S / 2, S / 2, S * 0.55);
-  grad.addColorStop(0, "rgba(255,255,255,0.2)");
-  grad.addColorStop(1, "rgba(0,0,0,0.3)");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, S, S);
-  g.strokeStyle = "rgba(0,0,0,0.3)";
-  g.lineWidth = 6;
-  g.beginPath();
-  g.arc(S / 2, S / 2, 158, 0, Math.PI * 2);
-  g.stroke();
-  g.drawImage(emblemCanvas(emblem, S, "rgba(255,255,255,0.4)", FONT), 3, 3);
-  g.drawImage(emblemCanvas(emblem, S, shadeHex(color, -0.55), FONT), 0, 0);
-  const map = new THREE.CanvasTexture(mc);
-  map.colorSpace = THREE.SRGBColorSpace;
+    const mc = document.createElement("canvas");
+    mc.width = mc.height = S;
+    const g = mc.getContext("2d")!;
+    g.fillStyle = color;
+    g.fillRect(0, 0, S, S);
+    const grad = g.createRadialGradient(S * 0.38, S * 0.34, 10, S / 2, S / 2, S * 0.55);
+    grad.addColorStop(0, "rgba(255,255,255,0.2)");
+    grad.addColorStop(1, "rgba(0,0,0,0.3)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, S, S);
+    g.strokeStyle = "rgba(0,0,0,0.3)";
+    g.lineWidth = 6;
+    g.beginPath();
+    g.arc(S / 2, S / 2, 158, 0, Math.PI * 2);
+    g.stroke();
+    g.drawImage(emblemCanvas(emblem, S, "rgba(255,255,255,0.4)", FONT), 3, 3);
+    g.drawImage(emblemCanvas(emblem, S, metal ? shadeHex(color, 0.45) : shadeHex(color, -0.55), FONT), 0, 0);
+    const map = new THREE.CanvasTexture(mc);
+    map.colorSpace = THREE.SRGBColorSpace;
 
-  const hc = document.createElement("canvas");
-  hc.width = hc.height = S;
-  const h = hc.getContext("2d")!;
-  h.fillStyle = "#000";
-  h.fillRect(0, 0, S, S);
-  h.shadowColor = "#fff";
-  h.shadowBlur = 8;
-  h.drawImage(emblemCanvas(emblem, S, "#fff", FONT), 0, 0);
-  const height = new THREE.CanvasTexture(hc);
+    const hc = document.createElement("canvas");
+    hc.width = hc.height = S;
+    const h = hc.getContext("2d")!;
+    h.fillStyle = "#000";
+    h.fillRect(0, 0, S, S);
+    h.shadowColor = "#fff";
+    h.shadowBlur = 8;
+    h.strokeStyle = "#fff";
+    h.lineWidth = 12;
+    h.beginPath();
+    h.arc(S / 2, S / 2, 176, 0, Math.PI * 2);
+    h.stroke();
+    h.drawImage(emblemCanvas(emblem, S, "#fff", FONT), 0, 0);
+    const height = new THREE.CanvasTexture(hc);
 
-  return { map, height };
+    return { map, height };
 }
 
 const PIECES = [
@@ -387,73 +425,63 @@ const PIECES = [
   { delay: 0.33, dx: 0.95, dy: -1.4, rz: 2.0, rx: 0.4 },
 ];
 
-function Seal({
-  P,
-  color,
-  emblem,
-  onOpen,
-}: {
-  P: React.RefObject<Progress>;
-  color: string;
-  emblem: string;
-  onOpen: () => void;
-}) {
-  const pieces = useMemo(() => buildSealPieces(), []);
-  const tex = useMemo(() => makeSealTextures(emblem, color), [emblem, color]);
-  const refs = useRef<(THREE.Mesh | null)[]>([]);
-  const mats = useRef<(THREE.MeshPhysicalMaterial | null)[]>([]);
+function Seal({ P, color, emblem, metal, onOpen }: { P: React.RefObject<Progress>; color: string; emblem: string; metal: boolean; onOpen: () => void; }) {
+    const pieces = useMemo(() => buildSealPieces(), []);
+    const tex = useMemo(() => makeSealTextures(emblem, color, metal), [emblem, color, metal]);  const refs = useRef<(THREE.Mesh | null)[]>([]);
+    const mats = useRef<(THREE.MeshPhysicalMaterial | null)[]>([]);
 
-  useFrame(() => {
-    const s = P.current.seal;
-    PIECES.forEach((p, i) => {
-      const m = refs.current[i];
-      const mat = mats.current[i];
-      if (!m || !mat) return;
-      const c = pieces[i].centroid;
-      const t = clamp01((s - p.delay) / 0.62);
-      const e = t * t;
-      m.position.set(c.x + p.dx * e * 0.6, c.y + p.dy * e * 0.7 + Math.sin(t * Math.PI) * 0.08, c.z + e * 0.5);
-      m.rotation.set(p.rx * e, 0, p.rz * e);
-      mat.opacity = 1 - smooth(clamp01((t - 0.65) / 0.35));
+    useFrame(() => {
+        const s = P.current.seal;
+        PIECES.forEach((p, i) => {
+        const m = refs.current[i];
+        const mat = mats.current[i];
+        if (!m || !mat) return;
+        const c = pieces[i].centroid;
+        const t = clamp01((s - p.delay) / 0.62);
+        const e = t * t;
+        m.position.set(c.x + p.dx * e * 0.6, c.y + p.dy * e * 0.7 + Math.sin(t * Math.PI) * 0.08, c.z + e * 0.5);
+        m.rotation.set(p.rx * e, 0, p.rz * e);
+        mat.opacity = 1 - smooth(clamp01((t - 0.65) / 0.35));
+        });
     });
-  });
 
-  return (
-    <group
-      position={[0, H / 2 - FLAP_H, Z_FLAP_CLOSED + 0.05]}
-      onClick={onOpen}
-      onPointerOver={() => (document.body.style.cursor = "pointer")}
-      onPointerOut={() => (document.body.style.cursor = "auto")}
-    >
-      {pieces.map((pc, i) => (
-        <mesh
-          key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          geometry={pc.geo}
-          position={pc.centroid}
-          castShadow
+    return (
+        <group
+        position={[0, H / 2 - FLAP_H, Z_FLAP_CLOSED + 0.05]}
+        onClick={onOpen}
+        onPointerOver={() => (document.body.style.cursor = "pointer")}
+        onPointerOut={() => (document.body.style.cursor = "auto")}
         >
-          <meshPhysicalMaterial
+        {pieces.map((pc, i) => (
+            <mesh
+            key={i}
             ref={(el) => {
-              mats.current[i] = el;
+                refs.current[i] = el;
             }}
-            map={tex.map}
-            bumpMap={tex.height}
-            bumpScale={3}
-            displacementMap={tex.height}
-            displacementScale={0.04}
-            roughness={0.3}
-            clearcoat={0.85}
-            clearcoatRoughness={0.18}
-            side={THREE.DoubleSide}
-            transparent
-          />
-        </mesh>
-      ))}
-    </group>
-  );
+            geometry={pc.geo}
+            position={pc.centroid}
+            castShadow
+            >
+            <meshPhysicalMaterial
+                ref={(el) => {
+                mats.current[i] = el;
+                }}
+                map={tex.map}
+                bumpMap={tex.height}
+                bumpScale={metal ? 4 : 3}
+                displacementScale={metal ? 0.05 : 0.04}
+                metalness={metal ? 1 : 0}
+                roughness={metal ? 0.22 : 0.3}
+                clearcoat={metal ? 0 : 0.85}
+                clearcoatRoughness={0.18}
+                side={THREE.DoubleSide}
+                envMapIntensity={metal ? 1.8 : 1}
+                transparent
+            />
+            </mesh>
+        ))}
+        </group>
+    );
 }
 
 /* ---------------- flap ---------------- */
@@ -687,7 +715,7 @@ function Scene({
     const pocket = useMemo(() => pocketGeometry(), []);
     const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
     const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern), [theme]);
-    const sealColor = accent ?? theme.seal.color;
+    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
     const openedRef = useRef(onOpened);
@@ -722,6 +750,9 @@ function Scene({
       <Environment resolution={256}>
         <Lightformer form="rect" intensity={4} position={[0, 5, 5]} scale={[10, 4, 1]} target={[0, 0, 0]} />
         <Lightformer form="rect" intensity={2} position={[-5, 1, 3]} scale={[4, 6, 1]} target={[0, 0, 0]} />
+        <color attach="background" args={["#3a352e"]} />
+        <Lightformer form="ring" intensity={6} color="#fff1cc" position={[0, 2, 4]} scale={3} target={[0, 0, 0]} />
+        <Lightformer form="rect" intensity={5} color="#ffffff" position={[3, -1, 4]} scale={[2, 5, 1]} target={[0, 0, 0]} />
       </Environment>
       <hemisphereLight args={["#fff4e6", "#2a2438", 0.3]} />
       <directionalLight
@@ -755,8 +786,8 @@ function Scene({
 
         <FlapShadow P={P} />
         <Flap P={P} outside={outside} inside={inside} shape={theme.flap} bump={bump} />
-        <Seal P={P} color={sealColor} emblem={theme.seal.emblem} onOpen={onOpen} />
-      </group>
+        <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
+     </group>
 
       <ContactShadows position={[0, -H / 2 - 0.5, 0]} opacity={0.5} scale={9} blur={2.6} far={3} />
     </>
