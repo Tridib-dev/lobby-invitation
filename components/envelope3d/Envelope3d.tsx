@@ -234,10 +234,9 @@ const radiusAt = (a: number) =>
   SEAL_R * (1 + 0.018 * Math.sin(3 * a + 1) + 0.012 * Math.sin(5 * a + 2));
 
 function profile(rn: number): number {
-  const edge = smooth(clamp01((1 - rn) / 0.14));
-  const rim = Math.exp(-(((rn - 0.72) / 0.07) ** 2)) * 0.04;
-  const recess = -0.035 * smooth(clamp01((0.68 - rn) / 0.06));
-  return 0.095 * edge + rim + recess;
+  const edge = smooth(clamp01((1 - rn) / 0.12));
+  const rim = Math.exp(-(((rn - 0.72) / 0.06) ** 2)) * 0.04;
+  return 0.09 * edge + rim;
 }
 
 const CUTS = [0.3, 2.3, 4.2];
@@ -331,6 +330,7 @@ function buildSealPieces(): SealPiece[] {
 function drawSprig(g: CanvasRenderingContext2D, S: number) {
   g.save();
   g.translate(S / 2, S / 2);
+  g.scale(1.15, 1.15);
   g.lineCap = "round";
   g.lineWidth = S * 0.018;
   g.beginPath();
@@ -377,8 +377,8 @@ function emblemCanvas(emblem: string, size: number, fill: string, fontPx: number
 }
 
 function makeSealTextures(emblem: string, color: string,  metal: boolean) {
-    const S = 512;
-    const FONT = 210;
+    const S = 1024;
+    const FONT = 420;
 
     const mc = document.createElement("canvas");
     mc.width = mc.height = S;
@@ -391,12 +391,20 @@ function makeSealTextures(emblem: string, color: string,  metal: boolean) {
     g.fillStyle = grad;
     g.fillRect(0, 0, S, S);
     g.strokeStyle = "rgba(0,0,0,0.3)";
-    g.lineWidth = 6;
+    g.lineWidth = 10;
     g.beginPath();
-    g.arc(S / 2, S / 2, 158, 0, Math.PI * 2);
+    g.arc(S / 2, S / 2, 316, 0, Math.PI * 2);
     g.stroke();
-    g.drawImage(emblemCanvas(emblem, S, shadeHex(color, -0.5), FONT), 0, 0);
-    g.drawImage(emblemCanvas(emblem, S, metal ? shadeHex(color, 0.45) : shadeHex(color, -0.55), FONT), 0, 0);
+    if (metal) {
+        g.fillStyle = shadeHex(color, -0.4); 
+        g.beginPath();
+        g.arc(S / 2, S / 2, 316, 0, Math.PI * 2);
+        g.fill();
+        g.drawImage(emblemCanvas(emblem, S, shadeHex(color, -0.75), FONT), 6, 6); 
+        g.drawImage(emblemCanvas(emblem, S, shadeHex(color, 0.18), FONT), 0, 0); 
+    } else {
+        g.drawImage(emblemCanvas(emblem, S, shadeHex(color, -0.55), FONT), 0, 0);
+    }
     const map = new THREE.CanvasTexture(mc);
     map.colorSpace = THREE.SRGBColorSpace;
 
@@ -405,15 +413,19 @@ function makeSealTextures(emblem: string, color: string,  metal: boolean) {
     const h = hc.getContext("2d")!;
     h.fillStyle = "#000";
     h.fillRect(0, 0, S, S);
-    h.shadowColor = "#fff";
-    h.shadowBlur = 8;
-    h.strokeStyle = "#fff";
-    h.lineWidth = 12;
+    h.fillStyle = "#3a3a3a";
     h.beginPath();
-    h.arc(S / 2, S / 2, 176, 0, Math.PI * 2);
+    h.arc(S / 2, S / 2, 316, 0, Math.PI * 2);
+    h.fill();
+    h.strokeStyle = "#fff";
+    h.lineWidth = 20;
+    h.beginPath();
+    h.arc(S / 2, S / 2, 316, 0, Math.PI * 2);
     h.stroke();
     h.drawImage(emblemCanvas(emblem, S, "#fff", FONT), 0, 0);
     const height = new THREE.CanvasTexture(hc);
+    map.anisotropy = 8;
+    height.anisotropy = 8;
 
     return { map, height };
 }
@@ -467,8 +479,7 @@ function Seal({ P, color, emblem, metal, onOpen }: { P: React.RefObject<Progress
                 }}
                 map={tex.map}
                 bumpMap={tex.height}
-                bumpScale={metal ? 4 : 3}
-                displacementScale={metal ? 0.05 : 0.04}
+                bumpScale={metal ? 2.5 : 2}
                 metalness={metal ? 0.9 : 0}
                 roughness={metal ? 0.38 : 0.3}
                 clearcoat={metal ? 0 : 0.85}
