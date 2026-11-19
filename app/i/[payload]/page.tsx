@@ -1,4 +1,3 @@
-import EnvelopeInvite from "@/components/EnvelopeInvite";
 import {decodeInvitePayload} from "@/src/lib/codec";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -44,7 +43,6 @@ export default async function InviteContent({params} : Props) {
         <main className="p-10">
             <h1 className="text-4xl font-bold">{result.value.title}</h1>
             <p>Hosted by {result.value.host}</p>
-            <EnvelopeInvite invite= {result.value}/>
         </main>
     )
 }
