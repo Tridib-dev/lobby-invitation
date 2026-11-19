@@ -3,9 +3,6 @@
 import { useState , type FormEvent } from "react";
 import { encodeInvitePayload } from "@/src/lib/codec";
 import { DEFAULT_ACCENT, INVITE_VERSION, LIMITS , type InvitePayload } from "@/src/types/invite";
-import { error } from "console";
-import Error from "next/error";
-import { p } from "motion/react-client";
 
 
 export default function Home() {
@@ -54,14 +51,14 @@ export default function Home() {
       await navigator.clipboard.writeText(InviteUrl);
       setShareMessage("Share sheet unavailable. Link copied instead");
     } catch(err) {
-      if (error instanceof Error && error.name ==="AbortError"){
+      if (err instanceof Error && err.name ==="AbortError"){
         return;
       }
       
       try {
         await navigator.clipboard.writeText(InviteUrl);
         setShareMessage("Link copied successfully");
-      } catch (err) {
+      } catch {
         setShareMessage("Unable to share. Please copy the link manually");
       }
     }
