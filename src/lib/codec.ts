@@ -2,10 +2,14 @@ import{
     DEFAULT_ACCENT,
     INVITE_VERSION,
     LIMITS,
-    TEMPLATES,
     type InvitePayload,
-    type TemplateId,
 } from "@/src/types/invite" ;
+import {
+  FALLBACK_TEMPLATE,
+  getTemplateMeta,
+  type FieldDef,
+} from "@/src/templates/meta";
+
 
 
 
@@ -60,11 +64,27 @@ function cleanString(value : unknown, max : number) : string {
 }
 
 
-function isTemplate(value : unknown):value is TemplateId {
-    return (
-        typeof value === "string" && 
-        (TEMPLATES as readonly string[]).includes(value)
-    );
+function sanitizeFields(raw : unknown , defs : readonly FieldDef[],) : Record<string,string> {
+    if (typeof raw !== "object" || raw ===  null) return {};
+    const input = raw as Record<string,unknown>;
+    const out : Record<string,string> = {};
+
+
+    for (const def of defs){
+        if(!Object.prototype.hasOwnProperty.call(input,def.key)) continue;
+        const value = input[def.key];
+        if (typeof value !== "string") continue;
+
+        if (def.type === "text"){
+            const text = cleanString(value,def.max);
+            if(text) out[def.key] = text;
+        }else if(def.type ==="color"){
+            if(/^#[0-9a-fA-F]{6}$/.test(value)) out[def.key] = value; 
+        }else if( def.options.includes(value))  {
+            out[def.key] = value;
+        }
+    }
+    return out;
 }
 
 
@@ -86,24 +106,28 @@ export function parseInvitePayload(raw : unknown) : DecodeResult{
     if (Number.isNaN(Date.parse(date))){
         return {ok : false , error : "Invalid date"};
     }
-
-    const accent = 
-        typeof r.accent ==="string" && /^#[0-9a-fA-F]{6}$/.test(r.accent) ? r.accent : DEFAULT_ACCENT;
     
-        return {
-            ok : true,
-            value : {
-                v : INVITE_VERSION,
-                title,
-                host: cleanString(r.host,LIMITS.host),
-                guest : cleanString(r.guest , LIMITS.guest),
-                date,
-                location : cleanString(r.location,LIMITS.location),
-                note: cleanString(r.note,LIMITS.note),
-                template : isTemplate(r.template) ? r.template : "envelope",
-                accent,
-            },
-        };
+    const accent = typeof r.accent ==="string" && /^#[0-9a-fA-F]{6}$/.test(r.accent) ? r.accent : DEFAULT_ACCENT;
+    const meta = (typeof r.template === "string" ? getTemplateMeta(r.template) : undefined) ?? FALLBACK_TEMPLATE;
+    const fields = sanitizeFields(r.fields,meta.fields);
+    
+    return {
+        ok : true,
+        value : {
+            v : INVITE_VERSION,
+            title,
+            host: cleanString(r.host,LIMITS.host),
+            guest : cleanString(r.guest , LIMITS.guest),
+            date,
+            location : cleanString(r.location,LIMITS.location),
+            note: cleanString(r.note,LIMITS.note),
+            template: meta.id,
+            accent,
+            ...(Object.keys(fields).length > 0 ? { fields } : {}),
+        },
+    };
+    
+    
 }
 
 
@@ -127,4 +151,5 @@ export  function decodeInvitePayload(encoded : string) : DecodeResult {
         return { ok : false , error : "Link is corrupted or malformed bruhhh"};
     }
 }
+
 

@@ -13,7 +13,7 @@ export interface InvitePayload{
     date : string;
     location : string;
     note : string;
-    template : TemplateId;
+    template : string;
     accent : string;
     fields?: Record<string, string>;
 }
