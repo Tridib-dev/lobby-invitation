@@ -22,7 +22,7 @@ export async function generateMetadata({ params } : Props) : Promise<Metadata> {
     
     const description = host ? `Hosted by ${host}, on ${when} at ${location}. Open to View your invitation.` : "Open to view your invitation.";
     
-    const image = `/test-og.png`;
+    const image = `/api/og?p=${payload}`;
 
     return {
         title: heading,
