@@ -18,7 +18,7 @@ export async function GET(request : Request){
         timeZone : "Asia/Kolkata",
     });
 
-    return new ImageResponse(
+    const image = new ImageResponse(
         (
             <div style = {{
                     width : "100%",
@@ -33,7 +33,7 @@ export async function GET(request : Request){
                 }}
             >
                 <div style={{ display : "flex" , fontSize : 32 , color : accent , }}>
-                    {guest ? `${guest}, you're invited !` : "You're invited"}
+                    {guest ? `${guest}, you're invited!` : "You're invited"}
                 </div>
                 <div style={{ display : "flex" , fontSize : 76 , fontWeight : 700 }}>
                     {title}
@@ -53,9 +53,14 @@ export async function GET(request : Request){
         {   
             width: 1200 ,
             height : 630 ,
-            headers : {
-                "Cache-Control" : "public , max-age= 31536000 , s-maxage = 31536000 , immutable"
-            }
         }
     );
+    const buffer = await image.arrayBuffer();
+    return new Response(buffer,{
+        headers: {
+            "Content-Type": "image/png",
+            "Content-Length": String(buffer.byteLength),
+            "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+        },
+    })
 }

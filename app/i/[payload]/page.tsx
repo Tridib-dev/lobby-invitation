@@ -12,10 +12,10 @@ export async function generateMetadata({ params } : Props) : Promise<Metadata> {
 
     if(!result.ok) return { title : "Invalid invitation"};
     
-    const { title , host , guest } = result.value;
-    const heading = guest? `${guest} , you're invited to ${title}` : `You are invited to ${title}`;
+    const { title , host , guest , date , location } = result.value;
+    const heading = guest? `${guest}, you're invited to ${title}` : `You are invited to ${title}`;
     
-    const description = host ? `Hosted by ${host}. Open to View your invitation.` : "Open to view your invitation.";
+    const description = host ? `Hosted by ${host}, on ${date}, at ${location}. Open to View your invitation.` : "Open to view your invitation.";
     
     const image = `/api/og?p=${payload}`;
 
