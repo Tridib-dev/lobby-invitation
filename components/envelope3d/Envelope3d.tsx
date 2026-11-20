@@ -94,41 +94,94 @@ function paintPattern(g: CanvasRenderingContext2D, size: number, p: SurfacePatte
   } else if (p.kind === "image" && p.src) {
     const img = new Image();
     img.onload = () => {
+      g.save();
+      g.globalCompositeOperation = "multiply";
       g.globalAlpha = p.opacity;
-      g.drawImage(img, 0, 0, size, size);
-      g.globalAlpha = 1;
+      const w = size / p.tiles;
+      const h = w * (img.height / img.width);
+
+      for (let y = 0 ; y < size; y += h) {
+        for ( let x = 0 ; x < size ;x += w) g.drawImage(img , x , y, w, h);
+      }
+      g.restore();
       onLate();
     };
+    img.onerror = () => onLate();
     img.src = p.src;
   }
   g.globalAlpha = 1;
 }
 
-function makeSurface(base: string, p: SurfacePattern): THREE.CanvasTexture {
-  const size = 1024;
+function makeSurface(base: string, p: SurfacePattern , border?: string): THREE.CanvasTexture {
+  const size = 2048;
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d")!;
   g.fillStyle = base;
   g.fillRect(0, 0, size, size);
+  if (border) {
+      const m = size * 0.05;
+      g.fillStyle = border;
+      g.fillRect(0, 0, size, size);
+      g.fillStyle = base;
+      g.fillRect(m, m, size - 2 * m, size - 2 * m);
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  paintPattern(g, size, p, () => {
+  tex.anisotropy = 16;
+  const finish = () => {
+    grain(g,size);
+    const shade = g.createLinearGradient(0,0,0,size);
+    shade.addColorStop(0,"rgba(255,255,255,0.07)");
+    shade.addColorStop(0,"rgba(0,0,0,0.16)");
+    g.fillStyle = shade;
+    g.fillRect( 0, 0, size , size);
+    g.strokeStyle = "rgba(0,0,0,0.3)";
+    g.lineWidth = size * 0.012;
+    g.strokeRect(0,0,size,size);
     tex.needsUpdate = true;
-  });
-  grain(g, size);
-
-  // top-lit shading and an outline so edges and folds read clearly
-  const shade = g.createLinearGradient(0, 0, 0, size);
-  shade.addColorStop(0, "rgba(255,255,255,0.07)");
-  shade.addColorStop(1, "rgba(0,0,0,0.16)");
-  g.fillStyle = shade;
-  g.fillRect(0, 0, size, size);
-  g.strokeStyle = "rgba(0,0,0,0.3)";
-  g.lineWidth = 14;
-  g.strokeRect(0, 0, size, size);
+  };
+  const late = p.kind === "image" && !!p.src;
+  paintPattern(g,size,p,finish);
+  if(!late) finish();
   return tex;
+}
+
+
+function makeFlapInside(base: string, border: string, p: SurfacePattern, d = 0.14): THREE.CanvasTexture {
+    const size = 2048;
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = Math.round((size * FLAP_H) / W);
+    const g = c.getContext("2d")!;
+    g.fillStyle = border;
+    g.fillRect(0,0,size,c.height);
+
+    const k = Math.hypot(FLAP_H,W / 2);
+    const xe = -W / 2 + (d * k) / FLAP_H;
+    const yt = -FLAP_H + (d * k) / (W / 2);
+    const tx = (x : number) => ((x + W / 2) / W) * size;
+    const ty = (y: number) => (-y / FLAP_H) * c.height;
+
+    g.fillStyle = base;
+    g.beginPath();
+    g.moveTo(tx(xe), 0);
+    g.lineTo(tx(-xe), 0);
+    g.lineTo(tx(0), ty(yt));
+    g.closePath();
+    g.fill();
+    g.save();
+    g.clip();
+    paintPattern(g, size, p, () => {
+      tex.needsUpdate = true;
+    });
+    g.restore();
+
+    grain(g, size);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 16;
+    return tex;
 }
 
 function makePaperBump(): THREE.CanvasTexture {
@@ -176,10 +229,12 @@ function wrap(g: CanvasRenderingContext2D, text: string, maxW: number): string[]
 function makeLetterTexture(c: LetterContent, accent: string): THREE.CanvasTexture {
   const CW = 1024;
   const CH = 696;
+  const S = 2;
   const cv = document.createElement("canvas");
-  cv.width = CW;
-  cv.height = CH;
+  cv.width = CW * S;
+  cv.height = CH * S;
   const g = cv.getContext("2d")!;
+  g.scale(S,S);
   g.fillStyle = "#fffaf0";
   g.fillRect(0, 0, CW, CH);
   for (let i = 0; i < 6000; i++) {
@@ -195,8 +250,8 @@ function makeLetterTexture(c: LetterContent, accent: string): THREE.CanvasTextur
   g.textAlign = "center";
   g.textBaseline = "alphabetic";
 
-  g.fillStyle = accent;
-  g.font = "italic 36px Georgia, serif";
+  g.fillStyle = "#6b5a3a";
+  g.font = "italic bold 40px Georgia, serif";
   g.fillText(c.guest ? `${c.guest}, you’re invited` : "You’re invited", CW / 2, 140);
 
   g.fillStyle = "#2b2118";
@@ -207,13 +262,13 @@ function makeLetterTexture(c: LetterContent, accent: string): THREE.CanvasTextur
   g.fillRect(CW / 2 - 60, 300, 120, 3);
 
   g.fillStyle = "#2b2118";
-  g.font = "34px Georgia, serif";
+  g.font = "bold 38px Georgia, serif";
   g.fillText(c.date, CW / 2, 380);
   if (c.location) g.fillText(c.location, CW / 2, 430);
 
   if (c.note) {
-    g.font = "italic 28px Georgia, serif";
-    g.fillStyle = "#5a4a3a";
+    g.font = "italic bold 32px Georgia, serif";
+    g.fillStyle = "#2b2118";
     wrap(g, c.note, CW - 220).forEach((line, i) => g.fillText(line, CW / 2, 510 + i * 40));
   }
 
@@ -519,6 +574,7 @@ function Flap({
     const f = P.current.flap;
     const angle = f * Math.PI * 0.985;
     const pos = g.attributes.position;
+    const uv = g.attributes.uv;
     const dy = FLAP_H / FLAP_SEG;
     let y = 0;
     let z = 0;
@@ -531,10 +587,13 @@ function Flap({
           : (W / 2) * (1 - t * 0.98);
       pos.setXYZ(i * 2, -half, y, z);
       pos.setXYZ(i * 2 + 1, half, y, z);
+      uv.setXY(i * 2, 0.5 - half / W, 1 - t);
+      uv.setXY(i * 2 + 1, 0.5 + half / W, 1 - t);
       y -= Math.cos(a) * dy;
       z += Math.sin(a) * dy;
     }
     pos.needsUpdate = true;
+    uv.needsUpdate = true;
     g.computeVertexNormals();
     // stay above the pocket until clearly lifted, then settle behind the letter
     if (hinge.current) {
@@ -548,10 +607,10 @@ function Flap({
 
   return (
     <group ref={hinge} position={[0, H / 2, Z_FLAP_CLOSED]}>
-      <mesh ref={front} geometry={geo} castShadow receiveShadow>
+      <mesh ref={front} geometry={geo}  castShadow receiveShadow>
         <meshStandardMaterial map={outside} roughness={0.85} bumpMap={bump} bumpScale={0.6} side={THREE.FrontSide} />
       </mesh>
-      <mesh geometry={geo} receiveShadow>
+      <mesh geometry={geo}>
         <meshStandardMaterial map={inside} roughness={0.85} bumpMap={bump} bumpScale={0.6} side={THREE.BackSide} />
       </mesh>
     </group>
@@ -726,8 +785,9 @@ function Scene({
     const back = useMemo(() => backGeometry(), []);
     const pocket = useMemo(() => pocketGeometry(), []);
     const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
-    const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern), [theme]);
-    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
+    const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern, theme.paper), [theme]);
+    const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper,  theme.flapPattern ?? theme.paperPattern),[theme]);
+    const flapInside = useMemo(() => theme.flap === "pointed" ? makeFlapInside(theme.liner, theme.paper, theme.linerPattern) : makeSurface(theme.liner, theme.linerPattern), [theme]);    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
     const openedRef = useRef(onOpened);
@@ -796,7 +856,7 @@ function Scene({
                 </mesh>
 
                 <FlapShadow P={P} />
-                <Flap P={P} outside={outside} inside={inside} shape={theme.flap} bump={bump} />
+                <Flap P={P} outside={flapOutside} inside={flapInside} shape={theme.flap} bump={bump} />
                 <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
             </group>
 
@@ -819,7 +879,7 @@ export default function Envelope3D({
   const [open, setOpen] = useState(false);
   return (
     <div style={{ width: "100%", maxWidth: 720, height: 560 }}>
-      <Canvas shadows="soft" camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }} dpr={[1, 2]}>
+      <Canvas shadows="soft" camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }} dpr={[3, 3]}>
         <Scene
           open={open}
           theme={theme}

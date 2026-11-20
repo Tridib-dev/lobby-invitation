@@ -15,7 +15,7 @@ const Envelope3D = dynamic(() => import ("@/components/envelope3d/Envelope3d"), 
 
 export default function InviteExperience ({ invite } : {invite : InvitePayload}) {
 
-    const theme = getEnvelopeTheme("Ivory");
+    const theme = getEnvelopeTheme("wedding");
 
     const letter  = useMemo (
         () => ({

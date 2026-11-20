@@ -12,6 +12,8 @@ export interface EnvelopeTheme {
   name: string;
   paper: string;
   paperPattern: SurfacePattern;
+  flapPaper?: string;
+  flapPattern?:SurfacePattern;
   liner: string;
   linerPattern: SurfacePattern;
   flap: "pointed" | "rounded";
@@ -26,7 +28,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     id: "ivory",
     name: "Ivory & burgundy wax",
     paper: "#f3ead8",
-    paperPattern: { kind: "diamonds", color: "#c9a85c", opacity: 0.35, tiles: 10 },
+    paperPattern: { kind: "image", src: "/patterns/petal-cross.svg", tiles: 6, opacity: 0.5, color: "#000" },
     liner: "#c9a85c",
     linerPattern: { kind: "dots", color: "#f3ead8", opacity: 0.25, tiles: 14 },
     flap: "pointed",
@@ -61,6 +63,18 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     linerPattern: { kind: "dots", color: "#d6336c", opacity: 0.2, tiles: 16 },
     flap: "rounded",
     seal: { color: "#d6336c", emblem: "🌹" },
+  },
+  {
+    id : "wedding",
+    name : "wedding : Ivory , gold & burgandy",
+    paper : "#5a1424",
+    paperPattern : none,
+    flapPaper : "#5a1424",
+    flapPattern : { kind: "dots", color: "#c9a24a", opacity: 0.35, tiles: 20 },
+    liner : "#1f3a2c",
+        linerPattern: { kind: "diamonds", color: "#c9a85c", opacity: 0.18, tiles: 14 },
+    flap : "pointed",
+    seal : { color: "#c9a24a", emblem: "🌹", finish: "metal" },
   },
 ];
 
