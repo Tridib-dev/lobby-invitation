@@ -1,7 +1,7 @@
 "use client";
 
 import { useState , type FormEvent } from "react";
-import { decodeInvitePayload, encodeInvitePayload } from "@/src/lib/codec";
+import { encodeInvitePayload } from "@/src/lib/codec";
 import { DEFAULT_ACCENT, INVITE_VERSION, LIMITS , type InvitePayload } from "@/src/types/invite";
 
 

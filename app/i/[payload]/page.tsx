@@ -1,7 +1,7 @@
 import {decodeInvitePayload} from "@/src/lib/codec";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-
+import InviteExperience from "@/components/InviteExperience";
 
 
 type Props = { params : Promise<{payload : string}>};
@@ -40,11 +40,12 @@ export default async function InviteContent({params} : Props) {
     }
     
     return (
-        <main className="p-10">
-            <h1 className="text-4xl font-bold">{result.value.title}</h1>
-            <p>Hosted by {result.value.host}</p>
+        <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-900 p-4 text-white">
+        <h1 className="sr-only">{result.value.title}</h1>
+        <InviteExperience invite={result.value} />
+        <p className="text-sm text-white/60">Tap the seal to open</p>
         </main>
-    )
+    );
 }
 
 
