@@ -9,7 +9,11 @@ import type { EnvelopeTheme, SurfacePattern, flapMotif } from "@/src/envelopes/t
 import { paintMotif, makeMotifBump } from "./textures/motif";
 import { FLAP_SHAPES, type flapShapeId } from "@/src/envelopes/flapShapes";
 
-
+import{
+  W, H, FLAP_H, POCKET_TIP, FLAP_SEG, BACK_DEPTH, Z_LETTER, Z_POCKET,
+  POCKET_DEPTH, Z_FRONT, Z_FLAP_CLOSED, Z_FLAP_OPEN, LW, LH, LETTER_Y0, LETTER_RISE_Y,
+} from "./constants";
+import { type Progress, clamp01, smooth, shadeHex } from "./math";
 export interface LetterContent {
   guest: string;
   title: string;
@@ -18,42 +22,6 @@ export interface LetterContent {
   note: string;
 }
 
-const W = 3.2;
-const H = 2.2;
-const FLAP_H = 1.25;
-const POCKET_TIP = 0.9;
-const FLAP_SEG = 96;
-
-// depth layout (z axis, towards the camera)
-const BACK_DEPTH = 0.05;
-const Z_LETTER = 0.02;
-const Z_POCKET = 0.05;
-const POCKET_DEPTH = 0.03;
-const Z_FRONT = Z_POCKET + POCKET_DEPTH + 0.01; // front surface of the pocket
-const Z_FLAP_CLOSED = Z_FRONT + 0.035;
-const Z_FLAP_OPEN = -0.03;
-
-const LW = 2.6; // letter sizeee
-const LH = 1.77;
-const LETTER_Y0 = -0.02;
-const LETTER_RISE_Y = 1.9; 
-
-type Progress = { seal: number; flap: number; pull: number };
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-const smooth = (n: number) => n * n * (3 - 2 * n);
-
-function shadeHex(hex: string, amount: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  const target = amount < 0 ? 0 : 255;
-  const t = Math.min(1, Math.abs(amount));
-  const ch = (v: number) => Math.round(v + (target - v) * t);
-  const r = ch((n >> 16) & 255);
-  const g = ch((n >> 8) & 255);
-  const b = ch(n & 255);
-  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
-}
 
 /* ---------------- textures ---------------- */
 
