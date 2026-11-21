@@ -7,6 +7,8 @@ import gsap from "gsap";
 import * as THREE from "three";
 import type { EnvelopeTheme, SurfacePattern, flapMotif } from "@/src/envelopes/theme";
 import { paintMotif, makeMotifBump } from "./textures/motif";
+import { FLAP_SHAPES, type flapShapeId } from "@/src/envelopes/flapShapes";
+
 
 export interface LetterContent {
   guest: string;
@@ -20,7 +22,7 @@ const W = 3.2;
 const H = 2.2;
 const FLAP_H = 1.25;
 const POCKET_TIP = 0.9;
-const FLAP_SEG = 20;
+const FLAP_SEG = 96;
 
 // depth layout (z axis, towards the camera)
 const BACK_DEPTH = 0.05;
@@ -155,41 +157,50 @@ function makeSurface(base: string, p: SurfacePattern, border?: string, aspect = 
 }
 
 
-function makeFlapInside(base: string, border: string, p: SurfacePattern, d = 0.14): THREE.CanvasTexture {
-    const size = 2048;
-    const c = document.createElement("canvas");
-    c.width = size;
-    c.height = Math.round((size * FLAP_H) / W);
-    const g = c.getContext("2d")!;
-    g.fillStyle = border;
-    g.fillRect(0,0,size,c.height);
+function makeFlapInside(base: string, border: string, p: SurfacePattern, shape: flapShapeId, d = 0.14): THREE.CanvasTexture {
+  const size = 2048;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = Math.round((size * FLAP_H) / W);
+  const g = c.getContext("2d")!;
+  g.fillStyle = border;
+  g.fillRect(0, 0, size, c.height);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 16;
 
-    const k = Math.hypot(FLAP_H,W / 2);
-    const xe = -W / 2 + (d * k) / FLAP_H;
-    const yt = -FLAP_H + (d * k) / (W / 2);
-    const tx = (x : number) => ((x + W / 2) / W) * size;
-    const ty = (y: number) => (-y / FLAP_H) * c.height;
+  const prof = FLAP_SHAPES[shape];
+  const tx = (x: number) => ((x + W / 2) / W) * size;
+  const ty = (t: number) => t * c.height;
+  const dx = d * 1.3;
+  const pts: { t: number; x: number }[] = [];
+  for (let i = 0; i <= 96; i++) {
+    const t = Math.sin(((i / 96) * Math.PI) / 2);
+    const x = (W / 2) * prof(t) - dx;
+    if (x <= 0) break;
+    pts.push({ t, x });
+  }
 
-    g.fillStyle = base;
-    g.beginPath();
-    g.moveTo(tx(xe), 0);
-    g.lineTo(tx(-xe), 0);
-    g.lineTo(tx(0), ty(yt));
-    g.closePath();
-    g.fill();
-    g.save();
-    g.clip();
-    paintPattern(g, size, p, () => {
-      tex.needsUpdate = true;
-    });
-    g.restore();
+  g.fillStyle = base;
+  g.beginPath();
+  g.moveTo(tx(-pts[0].x), 0);
+  pts.forEach((q) => g.lineTo(tx(-q.x), ty(q.t)));
+  for (let i = pts.length - 1; i >= 0; i--) g.lineTo(tx(pts[i].x), ty(pts[i].t));
+  g.closePath();
+  g.fill();
 
-    grain(g, size);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 16;
-    return tex;
+  g.save();
+  g.clip();
+  paintPattern(g, size, p, () => {
+    tex.needsUpdate = true;
+  });
+  g.restore();
+
+  grain(g, size);
+  tex.needsUpdate = true;
+  return tex;
 }
+
 
 // function makeEmbossBump(p:SurfacePattern,fallback : THREE.Texture,aspect=1) : THREE.Texture {
 //     if (p.kind !== "image" || !p.src || !p.raised) return fallback;
@@ -594,11 +605,12 @@ function Flap({
   P: React.RefObject<Progress>;
   outside: THREE.Texture;
   inside: THREE.Texture;
-  shape: "pointed" | "rounded";
+  shape: flapShapeId;
   bump: THREE.Texture;
   outsideBump: THREE.Texture;
 }) {
   const geo = useMemo(() => new THREE.PlaneGeometry(W, FLAP_H, 1, FLAP_SEG), []);
+  const ts = useMemo(() => Array.from({ length : FLAP_SEG + 1 }, (_ , i) => Math.sin(((i / FLAP_SEG) * Math.PI) / 2)),[]);
   const hinge = useRef<THREE.Group>(null);
   const front = useRef<THREE.Mesh>(null);
 
@@ -609,27 +621,25 @@ function Flap({
     const angle = f * Math.PI * 0.985;
     const pos = g.attributes.position;
     const uv = g.attributes.uv;
-    const dy = FLAP_H / FLAP_SEG;
+    const prof = FLAP_SHAPES[shape];
     let y = 0;
     let z = 0;
     for (let i = 0; i <= FLAP_SEG; i++) {
-      const t = i / FLAP_SEG;
+      const t = ts[i];
       const a = angle * (1 + 0.15 * t * Math.sin(angle));
-      const half =
-        shape === "rounded"
-          ? (W / 2) * Math.sqrt(Math.max(0, 1 - t * t * 0.97))
-          : (W / 2) * (1 - t * 0.98);
+      const half = (W / 2) * prof(t)
       pos.setXYZ(i * 2, -half, y, z);
       pos.setXYZ(i * 2 + 1, half, y, z);
       uv.setXY(i * 2, 0.5 - half / W, 1 - t);
       uv.setXY(i * 2 + 1, 0.5 + half / W, 1 - t);
+      const dy = FLAP_H * ((ts[i + 1] ?? 1) - t);
       y -= Math.cos(a) * dy;
       z += Math.sin(a) * dy;
     }
     pos.needsUpdate = true;
     uv.needsUpdate = true;
     g.computeVertexNormals();
-    // stay above the pocket until clearly lifted, then settle behind the letter
+   
     if (hinge.current) {
       hinge.current.position.z = THREE.MathUtils.lerp(
         Z_FLAP_CLOSED,
@@ -652,15 +662,22 @@ function Flap({
 }
 
 // soft shadow the closed flap throws onto the pocket; fades as the flap lifts
-function FlapShadow({ P }: { P: React.RefObject<Progress> }) {
+function FlapShadow({ P, shape }: { P: React.RefObject<Progress>; shape: flapShapeId }) {
   const geo = useMemo(() => {
+    const prof = FLAP_SHAPES[shape];
+    const N = 48;
+    const right: [number, number][] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = Math.sin(((i / N) * Math.PI) / 2);
+      right.push([Math.max(0, (W / 2) * prof(t) - 0.1), H / 2 - 0.02 - t * (FLAP_H - 0.02)]);
+    }
     const s = new THREE.Shape();
-    s.moveTo(-W / 2 + 0.1, H / 2 - 0.02);
-    s.lineTo(W / 2 - 0.1, H / 2 - 0.02);
-    s.lineTo(0, H / 2 - FLAP_H);
+    s.moveTo(-right[0][0], right[0][1]);
+    right.forEach(([x, y]) => s.lineTo(x, y));
+    for (let i = right.length - 1; i >= 0; i--) s.lineTo(-right[i][0], right[i][1]);
     s.closePath();
     return new THREE.ShapeGeometry(s);
-  }, []);
+  }, [shape]);
   const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   const layers = [
     { dx: 0.03, dy: -0.05, a: 0.16 },
@@ -787,7 +804,7 @@ function pocketGeometry() {
     depth: POCKET_DEPTH,
     bevelEnabled: true,
     bevelThickness: 0.01,
-    bevelSize: 0.012,
+    bevelSize: 0.004,
     bevelSegments: 2,
   });
   fitUV(g);
@@ -822,7 +839,8 @@ function Scene({
     const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern, theme.paper), [theme]);
     const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper, theme.flapPattern ?? theme.paperPattern, undefined, FLAP_H / W, theme.flapMotif), [theme]);
     const flapBump = useMemo(() => makeMotifBump(theme.flapMotif, 2048, Math.round((2048 * FLAP_H) / W), bump), [theme, bump]);
-    const flapInside = useMemo(() => theme.flap === "pointed" ? makeFlapInside(theme.liner, theme.paper, theme.linerPattern) : makeSurface(theme.liner, theme.linerPattern), [theme]);    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
+    const flapInside = useMemo(() => makeFlapInside(theme.liner, theme.paper, theme.linerPattern, theme.flap), [theme]);
+    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
     const openedRef = useRef(onOpened);
@@ -890,7 +908,7 @@ function Scene({
                     <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
                 </mesh>
 
-                <FlapShadow P={P} />
+                <FlapShadow P={P} shape={theme.flap}/>
                 <Flap P={P} outside={flapOutside} inside={flapInside} shape={theme.flap} bump={bump} outsideBump={flapBump} />
                 <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
             </group>

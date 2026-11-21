@@ -1,3 +1,8 @@
+
+import type { flapShapeId } from "./flapShapes"
+import { FLAP_SHAPES } from "./flapShapes";
+
+
 export type PatternKind = "none" | "dots" | "stripes" | "diamonds" | "image";
 export interface SurfacePattern {
   kind: PatternKind;
@@ -19,7 +24,7 @@ export interface EnvelopeTheme {
   flapMotif?: flapMotif;
   liner: string;
   linerPattern: SurfacePattern;
-  flap: "pointed" | "rounded";
+  flap: flapShapeId;
   seal: { color: string; emblem: string; finish?: "wax" | "metal" };
 }
 
@@ -44,7 +49,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     paperPattern: { kind: "image", src: "/patterns/petal-cross.svg", tiles: 6, opacity: 0.5, color: "#000" },
     liner: "#c9a85c",
     linerPattern: { kind: "dots", color: "#f3ead8", opacity: 0.25, tiles: 14 },
-    flap: "pointed",
+    flap: "Pointed",
     seal: { color: "#c9a24a", emblem: "sprig", finish: "metal" },
   },
   {
@@ -54,7 +59,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     paperPattern: { kind: "stripes", color: "#8a6a44", opacity: 0.18, tiles: 24 },
     liner: "#f2e3c6",
     linerPattern: { kind: "dots", color: "#ff5a5f", opacity: 0.35, tiles: 16 },
-    flap: "rounded",
+    flap: "Arch",
     seal: { color: "#ff5a5f", emblem: "🎉" },
   },
   {
@@ -64,7 +69,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     paperPattern: { kind: "dots", color: "#b8c0d0", opacity: 0.25, tiles: 18 },
     liner: "#0f1626",
     linerPattern: none,
-    flap: "pointed",
+    flap: "Scalloped",
     seal: { color: "#b8c0d0", emblem: "sprig", finish: "metal" }, 
   },
   {
@@ -77,7 +82,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     flapMotif: {src: "/patterns/motifs/motif-2-svg-vector.webp",height: 0.85,y: 0.42,opacity: 1.0,tint: "#E2C275",blend: "screen",raised: true,},
     liner: "#81B89A",
     linerPattern: {kind: "image",src: "/patterns/embroidery-pattern.webp",tiles: 1,opacity: 0.25,color: "#0B291D",blend: "overlay",raised: true,},
-    flap: "pointed",
+    flap: "Pointed",
     seal: { color: "#C85A72", emblem: "🌹" },
   },
   {
@@ -90,7 +95,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     flapMotif: { src: "/patterns/motifs/starry-svg-vector.webp", height: 0.85, y: 0.42, opacity: 1.0, tint: "#c9a24a", blend: "screen", raised: true },
     liner : "#1f3a2c",
     linerPattern: { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 1, opacity : 0.18 , color : "#005942" ,blend : "overlay" , raised : true},
-    flap : "pointed",
+    flap : "Scalloped",
     seal : { color: "#c9a24a", emblem: "🌹", finish: "metal" },
   },
 ];
