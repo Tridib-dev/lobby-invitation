@@ -157,47 +157,48 @@ function makeSurface(base: string, p: SurfacePattern, border?: string, aspect = 
 }
 
 
-function makeFlapInside(base: string, border: string, p: SurfacePattern, shape: flapShapeId, d = 0.14): THREE.CanvasTexture {
+function makeFlapInside(base: string, border: string, p: SurfacePattern, shape: flapShapeId, d = 0.11): THREE.CanvasTexture {
   const size = 2048;
   const c = document.createElement("canvas");
   c.width = size;
   c.height = Math.round((size * FLAP_H) / W);
   const g = c.getContext("2d")!;
-  g.fillStyle = border;
+  g.fillStyle = base;
   g.fillRect(0, 0, size, c.height);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 16;
 
   const prof = FLAP_SHAPES[shape];
-  const tx = (x: number) => ((x + W / 2) / W) * size;
-  const ty = (t: number) => t * c.height;
-  const dx = d * 1.3;
-  const pts: { t: number; x: number }[] = [];
-  for (let i = 0; i <= 96; i++) {
-    const t = Math.sin(((i / 96) * Math.PI) / 2);
-    const x = (W / 2) * prof(t) - dx;
-    if (x <= 0) break;
-    pts.push({ t, x });
+  const N = 240;
+  const pts: [ number, number ][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = Math.sin(((i / N) * Math.PI) / 2);
+    pts.push([(W / 2) * prof(t) , t]);
   }
+  const X = (x : number) => ((x + W / 2) / W) * size;
+  const Y = (t : number) => t * c.height;
 
-  g.fillStyle = base;
-  g.beginPath();
-  g.moveTo(tx(-pts[0].x), 0);
-  pts.forEach((q) => g.lineTo(tx(-q.x), ty(q.t)));
-  for (let i = pts.length - 1; i >= 0; i--) g.lineTo(tx(pts[i].x), ty(pts[i].t));
-  g.closePath();
-  g.fill();
-
-  g.save();
-  g.clip();
-  paintPattern(g, size, p, () => {
-    tex.needsUpdate = true;
-  });
-  g.restore();
-
-  grain(g, size);
-  tex.needsUpdate = true;
+  const finish = () => {
+      g.save();
+      g.lineJoin = "round";
+      g.lineCap = "butt";
+      g.lineWidth = 2 * d * (size / W);
+      g.strokeStyle = border;
+      g.beginPath();
+      g.moveTo(X(-pts[0][0]) , -10);
+      pts.forEach(([x,t]) => g.lineTo(X(-x),Y(t)));
+      for(let i = pts.length-1; i >= 0 ; i--) g.lineTo(X(pts[i][0]), Y(pts[i][1]));
+      g.lineTo(X(pts[0][0]), -10);
+      g.stroke();
+      g.restore();
+      grain(g,size);
+      tex.needsUpdate = true;
+  };
+  
+  const late = p.kind === "image" && !!p.src;
+  paintPattern(g,size,p,finish);
+  if(!late) finish();
   return tex;
 }
 
@@ -839,7 +840,7 @@ function Scene({
     const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern, theme.paper), [theme]);
     const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper, theme.flapPattern ?? theme.paperPattern, undefined, FLAP_H / W, theme.flapMotif), [theme]);
     const flapBump = useMemo(() => makeMotifBump(theme.flapMotif, 2048, Math.round((2048 * FLAP_H) / W), bump), [theme, bump]);
-    const flapInside = useMemo(() => makeFlapInside(theme.liner, theme.paper, theme.linerPattern, theme.flap), [theme]);
+    const flapInside = useMemo(() => makeFlapInside(theme.liner, theme.paper, theme.linerPattern, theme.flap),[theme]);
     const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
