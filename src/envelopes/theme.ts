@@ -5,6 +5,8 @@ export interface SurfacePattern {
   opacity: number; 
   tiles: number; 
   src?: string; 
+  blend?: GlobalCompositeOperation;
+  raised?: boolean;
 }
 
 export interface EnvelopeTheme {
@@ -61,18 +63,18 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     paperPattern: { kind: "diamonds", color: "#d6336c", opacity: 0.2, tiles: 12 },
     liner: "#fff1f3",
     linerPattern: { kind: "dots", color: "#d6336c", opacity: 0.2, tiles: 16 },
-    flap: "rounded",
+    flap: "pointed",
     seal: { color: "#d6336c", emblem: "🌹" },
   },
   {
     id : "wedding",
     name : "wedding : Ivory , gold & burgandy",
-    paper : "#5a1424",
-    paperPattern : none,
+    paper : "#450c19",
+    paperPattern : { kind: "dots", color: "#c9a24a", opacity: 0.35, tiles: 20, blend:"soft-light" , raised : true },
     flapPaper : "#5a1424",
-    flapPattern : { kind: "dots", color: "#c9a24a", opacity: 0.35, tiles: 20 },
+    flapPattern : { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 0.6, opacity : 0.35 , color : "#000" ,blend : "overlay" , raised : true},
     liner : "#1f3a2c",
-        linerPattern: { kind: "diamonds", color: "#c9a85c", opacity: 0.18, tiles: 14 },
+    linerPattern: { kind: "dots", color: "#c9a85c", opacity: 0.18, tiles: 14 },
     flap : "pointed",
     seal : { color: "#c9a24a", emblem: "🌹", finish: "metal" },
   },

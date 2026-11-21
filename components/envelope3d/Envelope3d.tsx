@@ -95,7 +95,7 @@ function paintPattern(g: CanvasRenderingContext2D, size: number, p: SurfacePatte
     const img = new Image();
     img.onload = () => {
       g.save();
-      g.globalCompositeOperation = "multiply";
+      g.globalCompositeOperation = p.blend ?? "multiply";
       g.globalAlpha = p.opacity;
       const w = size / p.tiles;
       const h = w * (img.height / img.width);
@@ -112,13 +112,14 @@ function paintPattern(g: CanvasRenderingContext2D, size: number, p: SurfacePatte
   g.globalAlpha = 1;
 }
 
-function makeSurface(base: string, p: SurfacePattern , border?: string): THREE.CanvasTexture {
+function makeSurface(base: string, p: SurfacePattern , border?: string , aspect = 1): THREE.CanvasTexture {
   const size = 2048;
   const c = document.createElement("canvas");
-  c.width = c.height = size;
+  c.width = size;
+  c.height = Math.round(size * aspect);;
   const g = c.getContext("2d")!;
   g.fillStyle = base;
-  g.fillRect(0, 0, size, size);
+  g.fillRect(0, 0, size, c.height);
   if (border) {
       const m = size * 0.05;
       g.fillStyle = border;
@@ -135,10 +136,10 @@ function makeSurface(base: string, p: SurfacePattern , border?: string): THREE.C
     shade.addColorStop(0,"rgba(255,255,255,0.07)");
     shade.addColorStop(0,"rgba(0,0,0,0.16)");
     g.fillStyle = shade;
-    g.fillRect( 0, 0, size , size);
+    g.fillRect( 0, 0, size , c.height);
     g.strokeStyle = "rgba(0,0,0,0.3)";
     g.lineWidth = size * 0.012;
-    g.strokeRect(0,0,size,size);
+    g.strokeRect(0,0,size,c.height);
     tex.needsUpdate = true;
   };
   const late = p.kind === "image" && !!p.src;
@@ -183,6 +184,31 @@ function makeFlapInside(base: string, border: string, p: SurfacePattern, d = 0.1
     tex.anisotropy = 16;
     return tex;
 }
+
+function makeEmbossBump(p:SurfacePattern,fallback : THREE.Texture,aspect=1) : THREE.Texture {
+    if (p.kind !== "image" || !p.src || !p.raised) return fallback;
+    const size = 2048;
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = Math.round(size * aspect);
+    const g = c.getContext("2d")!;
+    g.fillStyle = "#000";
+    g.fillRect(0,0,size,c.height);
+    const tex = new THREE.CanvasTexture(c);
+    const img = new Image();
+    img.onload= () => {
+        g.filter = "blur(2px)";
+        const w = size / p.tiles;
+        const h = w * (img.height / img.width);
+        for (let y = 0; y < size; y += h) {
+          for (let x = 0; x < size; x += w) g.drawImage(img, x, y, w, h);
+        }
+        tex.needsUpdate = true;
+    };
+    img.src = p.src;
+    return tex;
+}
+
 
 function makePaperBump(): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -557,12 +583,14 @@ function Flap({
   inside,
   shape,
   bump,
+  outsideBump
 }: {
   P: React.RefObject<Progress>;
   outside: THREE.Texture;
   inside: THREE.Texture;
   shape: "pointed" | "rounded";
   bump: THREE.Texture;
+  outsideBump: THREE.Texture;
 }) {
   const geo = useMemo(() => new THREE.PlaneGeometry(W, FLAP_H, 1, FLAP_SEG), []);
   const hinge = useRef<THREE.Group>(null);
@@ -608,7 +636,7 @@ function Flap({
   return (
     <group ref={hinge} position={[0, H / 2, Z_FLAP_CLOSED]}>
       <mesh ref={front} geometry={geo}  castShadow receiveShadow>
-        <meshStandardMaterial map={outside} roughness={0.85} bumpMap={bump} bumpScale={0.6} side={THREE.FrontSide} />
+        <meshStandardMaterial map={outside} roughness={0.85} bumpMap={outsideBump} bumpScale={3} side={THREE.FrontSide} />
       </mesh>
       <mesh geometry={geo}>
         <meshStandardMaterial map={inside} roughness={0.85} bumpMap={bump} bumpScale={0.6} side={THREE.BackSide} />
@@ -786,7 +814,8 @@ function Scene({
     const pocket = useMemo(() => pocketGeometry(), []);
     const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
     const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern, theme.paper), [theme]);
-    const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper,  theme.flapPattern ?? theme.paperPattern),[theme]);
+    const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper,  theme.flapPattern ?? theme.paperPattern , undefined , FLAP_H / W),[theme]);
+    const flapBump = useMemo(() => makeEmbossBump(theme.flapPattern ?? theme.paperPattern, bump , FLAP_H / W),[theme, bump]);
     const flapInside = useMemo(() => theme.flap === "pointed" ? makeFlapInside(theme.liner, theme.paper, theme.linerPattern) : makeSurface(theme.liner, theme.linerPattern), [theme]);    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 
@@ -856,7 +885,7 @@ function Scene({
                 </mesh>
 
                 <FlapShadow P={P} />
-                <Flap P={P} outside={flapOutside} inside={flapInside} shape={theme.flap} bump={bump} />
+                <Flap P={P} outside={flapOutside} inside={flapInside} shape={theme.flap} bump={bump} outsideBump={flapBump} />
                 <Seal P={P} color={sealColor} emblem={theme.seal.emblem} metal={theme.seal.finish === "metal"} onOpen={onOpen} />
             </group>
 
