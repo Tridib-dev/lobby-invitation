@@ -5,7 +5,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import gsap from "gsap";
 import * as THREE from "three";
-import type { EnvelopeTheme, SurfacePattern } from "@/src/envelopes/theme";
+import type { EnvelopeTheme, SurfacePattern, flapMotif } from "@/src/envelopes/theme";
+import { paintMotif, makeMotifBump } from "./textures/motif";
 
 export interface LetterContent {
   guest: string;
@@ -112,39 +113,44 @@ function paintPattern(g: CanvasRenderingContext2D, size: number, p: SurfacePatte
   g.globalAlpha = 1;
 }
 
-function makeSurface(base: string, p: SurfacePattern , border?: string , aspect = 1): THREE.CanvasTexture {
+function makeSurface(base: string, p: SurfacePattern, border?: string, aspect = 1, motif?: flapMotif): THREE.CanvasTexture {
   const size = 2048;
+  const height = Math.round(size * aspect);
   const c = document.createElement("canvas");
   c.width = size;
-  c.height = Math.round(size * aspect);;
+  c.height = height;
   const g = c.getContext("2d")!;
   g.fillStyle = base;
   g.fillRect(0, 0, size, c.height);
   if (border) {
       const m = size * 0.05;
       g.fillStyle = border;
-      g.fillRect(0, 0, size, size);
+      g.fillRect(0, 0, size, height);
       g.fillStyle = base;
-      g.fillRect(m, m, size - 2 * m, size - 2 * m);
+      g.fillRect(m, m, size - 2 * m, height - 2 * m);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 16;
   const finish = () => {
     grain(g,size);
-    const shade = g.createLinearGradient(0,0,0,size);
+    const shade = g.createLinearGradient(0,0,0,height);
     shade.addColorStop(0,"rgba(255,255,255,0.07)");
     shade.addColorStop(0,"rgba(0,0,0,0.16)");
     g.fillStyle = shade;
-    g.fillRect( 0, 0, size , c.height);
+    g.fillRect( 0, 0, size , height);
     g.strokeStyle = "rgba(0,0,0,0.3)";
     g.lineWidth = size * 0.012;
-    g.strokeRect(0,0,size,c.height);
+    g.strokeRect(0,0,size,height);
     tex.needsUpdate = true;
   };
-  const late = p.kind === "image" && !!p.src;
-  paintPattern(g,size,p,finish);
-  if(!late) finish();
+  let pending = (p.kind === "image" && p.src ? 1 : 0) + (motif ? 1 : 0);
+  const done = () => {pending -= 1;
+    if (pending <= 0) finish();
+  };
+  paintPattern(g,size,p,done);
+  if (motif) paintMotif(g, size, height, motif, done);
+  if ( pending === 0 ) finish();
   return tex;
 }
 
@@ -185,29 +191,29 @@ function makeFlapInside(base: string, border: string, p: SurfacePattern, d = 0.1
     return tex;
 }
 
-function makeEmbossBump(p:SurfacePattern,fallback : THREE.Texture,aspect=1) : THREE.Texture {
-    if (p.kind !== "image" || !p.src || !p.raised) return fallback;
-    const size = 2048;
-    const c = document.createElement("canvas");
-    c.width = size;
-    c.height = Math.round(size * aspect);
-    const g = c.getContext("2d")!;
-    g.fillStyle = "#000";
-    g.fillRect(0,0,size,c.height);
-    const tex = new THREE.CanvasTexture(c);
-    const img = new Image();
-    img.onload= () => {
-        g.filter = "blur(2px)";
-        const w = size / p.tiles;
-        const h = w * (img.height / img.width);
-        for (let y = 0; y < size; y += h) {
-          for (let x = 0; x < size; x += w) g.drawImage(img, x, y, w, h);
-        }
-        tex.needsUpdate = true;
-    };
-    img.src = p.src;
-    return tex;
-}
+// function makeEmbossBump(p:SurfacePattern,fallback : THREE.Texture,aspect=1) : THREE.Texture {
+//     if (p.kind !== "image" || !p.src || !p.raised) return fallback;
+//     const size = 2048;
+//     const c = document.createElement("canvas");
+//     c.width = size;
+//     c.height = Math.round(size * aspect);
+//     const g = c.getContext("2d")!;
+//     g.fillStyle = "#000";
+//     g.fillRect(0,0,size,c.height);
+//     const tex = new THREE.CanvasTexture(c);
+//     const img = new Image();
+//     img.onload= () => {
+//         g.filter = "blur(2px)";
+//         const w = size / p.tiles;
+//         const h = w * (img.height / img.width);
+//         for (let y = 0; y < size; y += h) {
+//           for (let x = 0; x < size; x += w) g.drawImage(img, x, y, w, h);
+//         }
+//         tex.needsUpdate = true;
+//     };
+//     img.src = p.src;
+//     return tex;
+// }
 
 
 function makePaperBump(): THREE.CanvasTexture {
@@ -814,8 +820,8 @@ function Scene({
     const pocket = useMemo(() => pocketGeometry(), []);
     const outside = useMemo(() => makeSurface(theme.paper, theme.paperPattern), [theme]);
     const inside = useMemo(() => makeSurface(theme.liner, theme.linerPattern, theme.paper), [theme]);
-    const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper,  theme.flapPattern ?? theme.paperPattern , undefined , FLAP_H / W),[theme]);
-    const flapBump = useMemo(() => makeEmbossBump(theme.flapPattern ?? theme.paperPattern, bump , FLAP_H / W),[theme, bump]);
+    const flapOutside = useMemo(() => makeSurface(theme.flapPaper ?? theme.paper, theme.flapPattern ?? theme.paperPattern, undefined, FLAP_H / W, theme.flapMotif), [theme]);
+    const flapBump = useMemo(() => makeMotifBump(theme.flapMotif, 2048, Math.round((2048 * FLAP_H) / W), bump), [theme, bump]);
     const flapInside = useMemo(() => theme.flap === "pointed" ? makeFlapInside(theme.liner, theme.paper, theme.linerPattern) : makeSurface(theme.liner, theme.linerPattern), [theme]);    const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
 

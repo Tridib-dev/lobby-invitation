@@ -16,12 +16,23 @@ export interface EnvelopeTheme {
   paperPattern: SurfacePattern;
   flapPaper?: string;
   flapPattern?:SurfacePattern;
+  flapMotif?: flapMotif;
   liner: string;
   linerPattern: SurfacePattern;
   flap: "pointed" | "rounded";
   seal: { color: string; emblem: string; finish?: "wax" | "metal" };
 }
 
+
+export interface flapMotif {
+  src : string;
+  height : number;
+  y : number;
+  opacity : number;
+  tint?: string;
+  blend?: GlobalCompositeOperation;
+  raised?: boolean; 
+}
 const none : SurfacePattern = { kind : "none" , color : "#000000" , opacity : 0 , tiles: 1};
 
 
@@ -57,24 +68,28 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
     seal: { color: "#b8c0d0", emblem: "sprig", finish: "metal" }, 
   },
   {
-    id: "blush",
-    name: "Blush & rose wax",
-    paper: "#f7d6dc",
-    paperPattern: { kind: "diamonds", color: "#d6336c", opacity: 0.2, tiles: 12 },
-    liner: "#fff1f3",
-    linerPattern: { kind: "dots", color: "#d6336c", opacity: 0.2, tiles: 16 },
+    id: "celadon-emerald",
+    name: "Celadon & emerald wax",
+    paper: "#D5F5E3",
+    paperPattern: {kind: "image",src: "/patterns/motifs/embossed-snowflake.webp",tiles: 2,opacity: 0.45,color: "#2D6A4F",blend: "multiply",raised: true,},
+    flapPaper: "#163B2C",
+    flapPattern: none,
+    flapMotif: {src: "/patterns/motifs/motif-2-svg-vector.webp",height: 0.85,y: 0.42,opacity: 1.0,tint: "#E2C275",blend: "screen",raised: true,},
+    liner: "#81B89A",
+    linerPattern: {kind: "image",src: "/patterns/embroidery-pattern.webp",tiles: 1,opacity: 0.25,color: "#0B291D",blend: "overlay",raised: true,},
     flap: "pointed",
-    seal: { color: "#d6336c", emblem: "🌹" },
+    seal: { color: "#C85A72", emblem: "🌹" },
   },
   {
     id : "wedding",
     name : "wedding : Ivory , gold & burgandy",
     paper : "#450c19",
-    paperPattern : { kind: "dots", color: "#c9a24a", opacity: 0.35, tiles: 20, blend:"soft-light" , raised : true },
+    paperPattern : { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 0.6, opacity : 0.35 , color : "#000" ,blend : "overlay" , raised : true},
     flapPaper : "#5a1424",
-    flapPattern : { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 0.6, opacity : 0.35 , color : "#000" ,blend : "overlay" , raised : true},
+    flapPattern : none,
+    flapMotif: { src: "/patterns/motifs/starry-svg-vector.webp", height: 0.85, y: 0.42, opacity: 1.0, tint: "#c9a24a", blend: "screen", raised: true },
     liner : "#1f3a2c",
-    linerPattern: { kind: "dots", color: "#c9a85c", opacity: 0.18, tiles: 14 },
+    linerPattern: { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 1, opacity : 0.18 , color : "#005942" ,blend : "overlay" , raised : true},
     flap : "pointed",
     seal : { color: "#c9a24a", emblem: "🌹", finish: "metal" },
   },
