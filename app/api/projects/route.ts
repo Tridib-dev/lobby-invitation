@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/src/server/db";
 import { CreateSchema } from "@/src/server/projectSchema"; 
-import { newId , newToken , hashToken , hashPassword } from "@/src/server/secrets";
+import { newId , hashPassword } from "@/src/server/secrets";
 
 
 export async function POST(req:Request) {
@@ -19,9 +19,6 @@ export async function POST(req:Request) {
     const d = parsed.data;
     const viewHash = d.visibility ==="private" ? await hashPassword(d.password!) : null;
     const manageHash = d.manageAccess === "password" ? await hashPassword(d.managePassword!) : null;
-    // const token = newToken();
-    // const passwordHash = d.visibility === "private" ? await hashPassword(d.password!) : null;
-
     for (let attempt = 0 ; attempt < 3 ; attempt++) {
         const id = newId();
         try{
@@ -33,9 +30,9 @@ export async function POST(req:Request) {
         } catch(e) {
             if((e as { code?: string }).code !== "23505"){
                 console.error(e);
-                return NextResponse.json({error : "Couldn't be saved"} , {status : 500});
+                return NextResponse.json({error : "Couldn't be saved"} , { status : 500 });
             }
         }
     }
-    return NextResponse.json({error : "Could not create id , try again !"} , {status : 500});
+    return NextResponse.json({error : "Could not create id , try again !"} , { status : 500 });
 }
