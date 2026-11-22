@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 import { sql } from "@/src/server/db"
 import { canManage } from "@/src/server/auth";
 import { UpdateSchema } from "@/src/server/projectSchema";
-import { param } from "motion/react-client";
+import { checkPassword } from "@/src/server/secrets";
 
 
 export async function GET(req:Request , {params} : { params : Promise<{ id : string }>}) {
     const { id } = await params;
     const rows = await sql`
-        select id, title, location, host_name, message, starts_at, design, visibility
-        from projects where id = ${id}`;
+        select id, title, location, host_name, message, starts_at, design, visibility, password_hash
+        from projects where id = ${id}`
     const p = rows[0];
     if(!p) return NextResponse.json({error : "Not found"} , { status : 404 });
     if (p.visibility === "private") {
-        return NextResponse.json({id : p.id , visibility : "private" , locked : true })
+        const pw = req.headers.get("x-password");
+        if(!pw  || !p.password_hash || !(await checkPassword(pw,p.password_hash))) {
+            NextResponse.json({ id : p.id , visibility : "private" , locked : true}, {status : pw ? 401 : 200})
+        }
     }
     return NextResponse.json({
         id : p.id,

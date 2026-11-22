@@ -21,7 +21,7 @@ export const CreateSchema = z.object({
     design : DesignSchema,
     visibility : z.enum(["public","private"]), 
     password : z.string().min(4).max(72).optional(),
-}).refine((d) => d.visibility === "public" || !d.password , {
+}).refine((d) => d.visibility === "public" || !!d.password , {
     message : "Private projects need a password",
     path : ["password"],
 })
