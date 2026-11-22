@@ -20,6 +20,8 @@ export interface newProject {
     design : Design;
     visibility : "public" | "private";
     password? : string; 
+    manageAccess : "public" | "password";
+    managePassword?: string;
 }
 
 export type ProjectView = 
@@ -37,7 +39,7 @@ export type ProjectView =
 }
 
 
-export async function createProject(p: newProject) : Promise<{id : string ; editToken : string}> {
+export async function createProject(p: newProject) : Promise<{id : string}> {
     const res = await fetch("/api/projects" , {
         method : "POST",
         headers : {"Content-Type" : "application/json"},

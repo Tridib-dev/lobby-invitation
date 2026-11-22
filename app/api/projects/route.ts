@@ -17,17 +17,19 @@ export async function POST(req:Request) {
             return NextResponse.json({ error: `${issue?.path.join(".") || "body"}: ${issue?.message ?? "Invalid input"}` }, { status: 400 });
     }
     const d = parsed.data;
-    const token = newToken();
-    const passwordHash = d.visibility === "private" ? await hashPassword(d.password!) : null;
+    const viewHash = d.visibility ==="private" ? await hashPassword(d.password!) : null;
+    const manageHash = d.manageAccess === "password" ? await hashPassword(d.managePassword!) : null;
+    // const token = newToken();
+    // const passwordHash = d.visibility === "private" ? await hashPassword(d.password!) : null;
 
-    for (let attempt = 0 ; attempt <= 3 ; attempt++) {
+    for (let attempt = 0 ; attempt < 3 ; attempt++) {
         const id = newId();
         try{
             await sql`
-                insert into projects (id, title, location, host_name, message, starts_at, design, visibility, password_hash, edit_token_hash)
-                values (${id}, ${d.title}, ${d.location}, ${d.hostName}, ${d.message}, ${d.startsAt}, ${JSON.stringify(d.design)}::jsonb, ${d.visibility}, ${passwordHash}, ${hashToken(token)})`;
+                insert into projects (id, title, location, host_name, message, starts_at, design, visibility, password_hash, manage_access, manage_password_hash)
+                values (${id}, ${d.title}, ${d.location}, ${d.hostName}, ${d.message}, ${d.startsAt}, ${JSON.stringify(d.design)}::jsonb, ${d.visibility}, ${viewHash}, ${d.manageAccess}, ${manageHash})`;
 
-            return NextResponse.json ( {id, editToken : token },{status : 201});
+            return NextResponse.json ( { id },{status : 201});
         } catch(e) {
             if((e as { code?: string }).code !== "23505"){
                 console.error(e);

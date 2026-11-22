@@ -21,10 +21,23 @@ export const CreateSchema = z.object({
     design : DesignSchema,
     visibility : z.enum(["public","private"]), 
     password : z.string().min(4).max(72).optional(),
-}).refine((d) => d.visibility === "public" || !!d.password , {
-    message : "Private projects need a password",
-    path : ["password"],
-})
+    manageAccess : z.enum(["public" , "password"]).default("public"),
+    managePassword : z.string().min(4).max(72).optional(),
+}).superRefine((d , ctx) => {
+    if(d.visibility === "private" && !d.password) {
+        ctx.addIssue({ code : "custom" , message : "A password-protected invitation needs a password" , path: ["password"] });
+    }
+    if(d.manageAccess === "password" && !d.managePassword) {
+        ctx.addIssue({ code : "custom" , message : "A password-protected control centre needs a password" , path : ["managePassword"] });
+    }
+    if(d.visibility === "private" && d.manageAccess !== "password"){
+        ctx.addIssue({
+            code : "custom",
+            message : "A password protected invitation needs a password protected control center",
+            path : ["manageAccess"],
+        });
+    } 
+});
 
 
 export const UpdateSchema = z.object ({
