@@ -15,7 +15,7 @@ export async function GET(req:Request , {params} : { params : Promise<{ id : str
     if (p.visibility === "private") {
         const pw = req.headers.get("x-password");
         if(!pw  || !p.password_hash || !(await checkPassword(pw,p.password_hash))) {
-            NextResponse.json({ id : p.id , visibility : "private" , locked : true}, {status : pw ? 401 : 200})
+            return NextResponse.json({ id : p.id , visibility : "private" , locked : true}, {status : pw ? 401 : 200})
         }
     }
     return NextResponse.json({
