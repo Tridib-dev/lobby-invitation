@@ -4,7 +4,6 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import  { getEnvelopeTheme } from "@/src/envelopes/theme";
-import { InvitePayload } from "@/src/types/invite";
 import type { LetterContent } from "@/components/envelope3d/Envelope3d";
 import type { Design } from "@/src/lib/projectsClient";
 
@@ -32,7 +31,7 @@ export default function InviteExperience ({ invite } : {invite : InviteProject})
         () => {
             const d = new Date(invite.startsAt);
             const day = d.toLocaleDateString("en-IN" , { dateStyle : "full" , timeZone : IST});
-            const time = d.toLocaleDateString("en-IN" , { timeStyle : "short" , timeZone : IST});
+            const time = d.toLocaleTimeString("en-IN" , { timeStyle : "short" , timeZone : IST});
             return {
                 guest : "",
                 title : invite.title,
