@@ -49,6 +49,6 @@ export const UpdateSchema = z.object ({
     design : DesignSchema.optional().optional(),
     visibility : z.enum(["public" , "private"]).optional(),
     password : z.string().min(4).max(72).optional(),
-    manageAccess : z.enum(["public" , "private"]).optional(),
+    manageAccess : z.enum(["public" , "password"]).optional(),
     managePassword : z.string().min(4).max(72).optional(),
 }).partial();
