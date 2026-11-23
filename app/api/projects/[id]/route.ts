@@ -54,7 +54,7 @@ export async function PATCH(req : Request , { params } : {params : Promise<{ id 
     if(!cur) return NextResponse.json({ error : "Not found"} , {status : 404});
 
     const visibility = d.visibility ?? cur.visibility;
-    const manageAccess = d.manageAcess ?? cur.manage_access;
+    const manageAccess = d.manageAccess ?? cur.manage_access;
     let viewHash : string | null = visibility === "private" ? cur.password_hash : null;
     if(visibility === "private" && d.password) viewHash = await hashPassword(d.password);
     let manageHash : string | null = manageAccess === "password" ? cur.manage_password_hash : null;
