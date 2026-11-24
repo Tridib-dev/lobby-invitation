@@ -6,7 +6,7 @@ import StepEvent from "@/features/wizard/StepEvent";
 import StepHost from "@/features/wizard/StepHost";
 import { useDraft } from "@/features/wizard/useDraft";
 import { managePassword, validateStep } from "@/features/wizard/types";
-import StepAccess from "@/features/wizard/stepAccess";
+import StepAccess from "@/features/wizard/StepAccess";
 import ResultScreen from "@/features/wizard/ResultScreen";
 import { createProject } from "@/src/lib/projectsClient";
 import { saveMine } from "@/src/lib/myProjects";

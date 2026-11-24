@@ -3,7 +3,7 @@
 import { useEffect , useState } from "react";
 import StepEvent from "../wizard/StepEvent";
 import StepHost from "../wizard/StepHost";
-import StepAccess from "../wizard/stepAccess";
+import StepAccess from "../wizard/StepAccess";
 import { inputclass } from "../wizard/WizardShell";
 import { EMPTY_DRAFT , managePassword , validateStep , type Draft } from "../wizard/types";
 import { removeMine } from "@/src/lib/myProjects";
@@ -37,6 +37,7 @@ function toDraft(p : Details) : Draft {
         title : p.title,
         startsAtLocal : toLocalInput(p.startsAt),
         location : p.location ?? "",
+        hostName : p.hostName ?? "",
         message : p.message ?? "",
         visibility : p.visibility,   
         manageAccess : p.manageAccess,
@@ -140,7 +141,7 @@ export default function ControlCenter({ id } : { id : string }) {
                 }),
             });
             const data = await res.json().catch(() => ({}));
-            if(!res.ok) throw new Error(data.err ?? "Couldn't save");
+            if(!res.ok) throw new Error(data.error ?? "Couldn't save");
             if (draft.manageAccess === "public") {
                 setPw("");
             } else {
@@ -188,7 +189,7 @@ export default function ControlCenter({ id } : { id : string }) {
     }
 
     const shell = ( children: React.ReactNode ) => (
-        <main className="min-h-scren bg-neutral-900 p-4 text-white">
+        <main className="min-h-screen bg-neutral-900 p-4 text-white">
             <div className="mx-auto w-full max-w-md space-y-6 py-8">{children}</div>
         </main>
     );
@@ -263,9 +264,13 @@ export default function ControlCenter({ id } : { id : string }) {
                     {copied === "control" ? "Copied!" : "Copy control link"}
                 </button>
             </div>
-            
             <section className="space-y-5">
-                <h2 className=""text-lg font-semibold>Access</h2>
+                <h2 className="text-lg font-semibold">Event</h2>
+                <StepEvent draft={draft} update={update} />
+                <StepHost draft={draft} update={update} />
+            </section>
+            <section className="space-y-5">
+                <h2 className="text-lg font-semibold">Access</h2>
                 <p className="text-sm text-white">
                     Leave the password fields empty to keep the current passwords
                 </p>
@@ -276,8 +281,8 @@ export default function ControlCenter({ id } : { id : string }) {
 
             <button
                 onClick={save}
-                disabled={busy || !eventError}
-                className="w-fu;; rounded-lg bg-white py-2.5 font-medium text-black disabled:opacity-40"
+                disabled={busy || !!eventError}
+                className="w-full rounded-lg bg-white py-2.5 font-medium text-black disabled:opacity-40"
             >
                 {busy ? "Saving..." : "Save Changes"}
             </button>
@@ -296,7 +301,7 @@ export default function ControlCenter({ id } : { id : string }) {
                         <button onClick={() => setConfirmDelete(false)} className="flex-1 rounded-lg bg-white/10 py-2">
                             Cancel
                         </button>
-                        <button onClick={remove} disabled={busy} className="flex-1 rounded-lh=g bg-red-500 py-2 font-medium disabled:opacity-50">
+                        <button onClick={remove} disabled={busy} className="flex-1 rounded-lg bg-red-500 py-2 font-medium disabled:opacity-50">
                             Yes, Delete forever                            
                         </button>
                     </div>
