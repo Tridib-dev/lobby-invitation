@@ -7,7 +7,7 @@ export interface SavedProject {
     createdAt : string;
 }
 
-const KEY = "lobby:mine:v1";
+export const KEY = "lobby:mine:v1";
 
 export function loadMine() : SavedProject[] {
     try {

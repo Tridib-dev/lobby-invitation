@@ -292,9 +292,9 @@ export default function ControlCenter({ id } : { id : string }) {
                 {!confirmDelete ? (
                     <button
                         onClick={() => setConfirmDelete(true)}
-                        className="w-full rounded-lg bg-red-500/20 py-2 font-medium text-red-200"
+                        className="w-full rounded-lg bg-red-500/70 py-2 font-medium text-red-200"
                     >
-                        Delete...
+                        Delete
                     </button> 
                 ) : (
                     <div className="flex gap-2">

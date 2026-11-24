@@ -50,7 +50,7 @@ export default function StepAccess({ draft , update } : {draft : Draft ; update 
                 <Choice
                     selected={viewingPrivate}
                     title="Guests must enter password first."
-                    desc="Guests must enter a password first."
+                    desc="Password protected"
                     onClick={() => update({ visibility : "private" ,manageAccess : "password"})}
                 />
             </div>
@@ -72,7 +72,7 @@ export default function StepAccess({ draft , update } : {draft : Draft ; update 
                 <Choice
                     selected={controlPassword}
                     title="Password protected"
-                    desc="You need a password to0 open the control centre and change anything."
+                    desc="You need a password to open the control centre and change anything."
                     onClick={() => update({ manageAccess : "password"})}
                 />
 
