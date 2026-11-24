@@ -99,7 +99,7 @@ export default function CreatePage(){
             onBack = {() => setIndex((i) => Math.max(0, i - 1 ))}
             onNext={last ? Submit : () => setIndex((i) => Math.min(STEPS.length-1,i+1))}
             nextLabel = {last ? (busy ? "Creating..." : "Create invitation") : "Next"}
-            nextDisabled = { !!error || last }
+            nextDisabled = { !!error || busy }
             hint = {error ?? submitError}
         >
             {step.id === "event" && <StepEvent draft={draft} update={update} /> }
