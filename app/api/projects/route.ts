@@ -39,10 +39,27 @@ export async function POST(req:Request) {
 
 
 export async function GET(req : Request) {
+
+    const url = new URL(req.url);
+    if(url.searchParams.has("ids")){
+        const ids = (url.searchParams.get("ids") ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => /^[A-Za-z0-9_-]{6,12}$/.test(s))
+            .slice(0,50);
+
+        if (ids.length === 0) return NextResponse.json({ ids : [] });
+        const rows = await sql`select id from projects where id = any(${ids})`;
+        return NextResponse.json(
+            { ids : rows.map((r) => r.id) },
+            { headers : { "Cache-Control" : "no-store" } },
+        );
+    }
+
     const q = (new URL(req.url).searchParams.get("q") ?? "")?.trim().slice(0,80);
     const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 
-    const rows =await sql`
+    const rows = await sql`
         select id, title, visibility, manage_access, created_at
         from projects
         where title ilike ${like}

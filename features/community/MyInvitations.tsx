@@ -1,8 +1,9 @@
 "use client" ;
 
-import { useMemo , useSyncExternalStore } from "react";
-import { KEY , type SavedProject } from "@/src/lib/myProjects";
+import { useEffect , useMemo , useState, useSyncExternalStore } from "react";
+import { KEY , removeMine , type SavedProject } from "@/src/lib/myProjects";
 import ProjectCard from "./ProjectCard";
+
 
 function subscribe(cb : () => void) {
     window.addEventListener("storage" , cb);
@@ -19,6 +20,7 @@ function snapshot () {
 
 export default function MyInvitations() {
     const raw = useSyncExternalStore(subscribe , snapshot , () => null);
+    const [ gone , setGone ] = useState<string[]>([]);
 
     const items = useMemo<SavedProject[]>(() => {
         try {
@@ -29,7 +31,27 @@ export default function MyInvitations() {
         }
     } , [raw]);
 
-    if(items.length === 0) return null;
+    useEffect (() => {
+        if(items.length === 0) return;
+        let cancelled = false;
+        fetch(`/api/projects?ids=${items.map((p) => p.id).join(",")}`, { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d : { ids : string[] } | null ) => {
+                if (cancelled || !d) return;
+                const alive = new Set(d.ids);
+                const missing = items.filter((p) => !alive.has(p.id)).map((p) => p.id);
+                if(missing.length === 0) return;
+                missing.forEach(removeMine);
+                setGone((g) => [ ...g , ...missing]); 
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    },[items]);
+
+    const shown = items.filter((p) => !gone.includes(p.id));
+    if(shown.length === 0) return null;
 
     return (
         <section className="space-y-4">
