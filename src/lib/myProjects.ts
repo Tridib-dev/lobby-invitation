@@ -2,8 +2,8 @@
 export interface SavedProject {
     id : string;
     title : string;
-    editToken : string;
     visibility : "public" | "private";
+    manageAccess : "public" | "password";
     createdAt : string;
 }
 
