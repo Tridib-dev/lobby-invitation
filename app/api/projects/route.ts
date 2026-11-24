@@ -36,3 +36,28 @@ export async function POST(req:Request) {
     }
     return NextResponse.json({error : "Could not create id , try again !"} , { status : 500 });
 }
+
+
+export async function GET(req : Request) {
+    const q = (new URL(req.url).searchParams.get("q") ?? "")?.trim().slice(0,80);
+    const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+
+    const rows =await sql`
+        select id, title, visibility, manage_access, created_at
+        from projects
+        where title ilike ${like}
+        order by created_at desc
+        limit 60`;
+    return NextResponse.json(
+        {
+            items : rows.map((r) => ({
+                id : r.id,
+                title : r.title,
+                visibility : r.visibility,
+                manageAccess : r.manage_access,
+                createdAt : r.created_at,
+            })),
+        },
+        { headers : { "cache-control" : "no-store" } },
+    );
+}

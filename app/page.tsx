@@ -1,187 +1,27 @@
-"use client";
-
-import { useState , type FormEvent } from "react";
-import { encodeInvitePayload } from "@/src/lib/codec";
-import { DEFAULT_ACCENT, INVITE_VERSION, LIMITS , type InvitePayload } from "@/src/types/invite";
+import Link from "next/link";
+import MyInvitations from "@/features/community/MyInvitations";
+import Community from "@/features/community/Community";
 
 
-export default function Home() {
-  const [InviteUrl,setInviteUrl ] = useState("");
-  const [shareMessage, setShareMessage] = useState("");
-  const [guest, setGuest] = useState("");
-  function createInvite(event : FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-  
-    const data = new FormData(event.currentTarget);
-    const guestName = String(data.get("guest") ?? "");
-    setGuest(guestName);
-    const payload : InvitePayload = {
-      v : INVITE_VERSION,
-      title : String(data.get("title") ?? ""),
-      host : String( data.get("host") ?? ""),
-      guest : String( data.get("guest") ?? ""),
-      date : new Date(
-        String(data.get("date") ?? "")
-      ).toISOString(),
-      
-      location: String(data.get("location") ?? ""),
-      note : String(data.get("note") ?? ""),
-      template : "classic",
-      accent : DEFAULT_ACCENT,
-    }
-
-    const encoded = encodeInvitePayload(payload);
-
-    setInviteUrl(
-      `${window.location.origin}/i/${encoded}`
-    );
-  }
-  async function shareInvite() {
-    const shareData = {
-      title : "You're invited",
-      text : `Here's your invitation. Hope you can make it, ${guest} ! 🥂`,
-      url : InviteUrl,
-    };
-
-    try {
-      if(navigator.share) {
-        await navigator.share(shareData);
-        return;
-      }
-
-      await navigator.clipboard.writeText(InviteUrl);
-      setShareMessage("Share sheet unavailable. Link copied instead");
-    } catch(err) {
-      if (err instanceof Error && err.name ==="AbortError"){
-        return;
-      }
-      
-      try {
-        await navigator.clipboard.writeText(InviteUrl);
-        setShareMessage("Link copied successfully");
-      } catch {
-        setShareMessage("Unable to share. Please copy the link manually");
-      }
-    }
-  }
-  return (
-    <main className="min-h-screen bg-neutral-50 px-6 py-12 text-neutral-900">
-      <section className="mx-auto max-w-xl">
-        <h1 className="mb-2 text-3xl font-semibold">
-          Create an invitation
-        </h1>
-
-        <p className="mb-8 text-neutral-500">
-          craft the besty invitaion card you have ever devoloped :)
-        </p>
-
-
-        <form onSubmit={createInvite} className="space-y-5">
-          <label className="block">
-            Event title
-
-            <input 
-              name="title"
-              required
-              maxLength={LIMITS.title}
-              placeholder=" A night to remeber !"
-              className="mt-2 w-full rounded-xl border bg-white p-3" 
-            />
-          </label>
-          <label className="block">
-            Host
-
-            <input 
-              name="host"
-              maxLength={LIMITS.host}
-              placeholder="Your name "
-              className="mt-2 w-full rounded-xl border bg-white p-3" 
-            />
-          </label>
-          <label className="block">
-            Guest name
-
-            <input 
-              name="guest"
-              maxLength={LIMITS.guest}
-              placeholder=" Invite someone "
-              className="mt-2 w-full rounded-xl border bg-white p-3" 
-            />
-          </label>
-          <label className="block">
-            Date and time
-            <input 
-              name="date"
-              type="datetime-local"
-              required
-              className="mt-2 w-full rounded-xl border bg-white p-3" 
-            />
-          </label>
-
-          <label className="block">
-            Location
-
-            <input 
-              name="location"
-              maxLength={LIMITS.location}
-              placeholder="Venue and location"
-              className="mt-2 w-full rounded-xl border bg-white p-3" 
-            />
-          </label>
-
-          <label className="block">
-            Personal note
-            <textarea
-              name="note"
-              maxLength={LIMITS.note}
-              rows={3}
-              placeholder="Add a little personal touch in ur invitation :).."
-              className="mt-2 w-full rounded-xl border bg-white p-3"
-            />
-          </label>
-
-          <button type="submit" className="w-full rounded-xl bg-neutral-900 px-5 py-3 font-medium text-white">
-            Genrate invitation 📤
-          </button>
-        </form>
-
-        {InviteUrl && (
-          <div className="mt-8 rounded-xl border bg-white p-5">
-            <p className="mb-3 font-medium">
-              Your invitation is ready.
-            </p>
-
-            <a
-              href={InviteUrl}
-              className="break-all text-blue-600 underline"
-            >
-              Open invitation
-            </a>
-
-            <button
-              type="button"
-              onClick={shareInvite}
-              className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 transition"
-            >
-              Share invitation ↗
-            </button>
-
-            {shareMessage && (
-              <p className="mt-3 text-sm text-neutral-500" >
-                {shareMessage}
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={() => navigator.clipboard.writeText(InviteUrl)}
-              className="mt-4 block rounded-lg bg-neutral-100 px-4 py-2"
-            >
-              Copy invitation link
-            </button>
-          </div>
-        )}
-      </section>
+export default  function Home () {
+  return(
+    <main className="min-h-screen bg-neutral-900 p-4 text-white">
+      <div className="mx-auto w-full max-w-3xl space-y-12 py-12">
+        <header className="space-y-4 text-center">
+          <h1 className="text-4xl font-semibold">Lobby Invitations</h1>
+          <p className="text-white/70">
+            Create a beautiful 3D envelope invitation,share the link and manage it later. No account needed.
+          </p>
+          <Link
+            href="/create"
+            className="inline-block rounded-lg bg-white px-6 py-3 font-medium text-black"
+          >
+            Create an invitation
+          </Link>
+        </header>
+        <MyInvitations />
+        <Community />
+      </div>
     </main>
-  )
+  );
 }
