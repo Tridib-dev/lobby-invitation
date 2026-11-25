@@ -1,7 +1,7 @@
 "use client";
 
-import { button } from "motion/react-client";
-import { Children, type ReactNode } from "react";
+
+import { type ReactNode } from "react";
 
 export type StepDef = { id : string ; label : string};
 
@@ -26,6 +26,7 @@ export default function WizardShell({
     nextLabel = "Next",
     nextDisabled,
     hint,
+    wide,
     children,
 } : {
     steps : StepDef[];
@@ -35,12 +36,13 @@ export default function WizardShell({
     nextLabel? : string;
     nextDisabled? : boolean;
     hint? : string | null;
+    wide?:boolean;
     children : ReactNode
 }) {
     return(
         <main className="min-h-screen bg-neutral-900 p-4 text-white">
-            <div className="mx-auto w-full max-w-md space-y-6 py-6">
-                <header className="space-y-3">
+            <div className={`mx-auto w-full ${wide ? "max-6xl" : "max-w-md"}`}>
+                <header className="mx-auto max-w-md py-6 space-y-3">
                     <p className="text-sm text-white/60">
                         Step {index + 1} of {steps.length} · {steps[index].label}
                     </p>
@@ -54,27 +56,32 @@ export default function WizardShell({
                     </div>
                 </header>
 
-                <section className="space-y-5">{children}</section>
+                <section className={wide ? "" : "space-y-5"}>{children}</section>
 
-                {hint && <p className="text-sm text-amber-300">{hint}</p>}
+                {/* {hint && <p className="text-sm text-amber-300">{hint}</p>} */}
 
-                <footer className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        disabled={index === 0}
-                        className="flex-1 rounded-lg bg-white/10 py-2.5 font-medium disabled:opacity-30"
-                    >
-                        Back
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onNext}
-                        disabled={nextDisabled}
-                        className="flex-1 rounded-lg bg-white py-2.5 font-medium text-black disabled:opacity-40"
-                    >
-                        {nextLabel}
-                    </button>
+                <footer className="sticky bottom-0 z-20 -mx-4 mt-6 bg-neutral-900/95 px-4 py-3 backdrop-blur">
+                    <div className="mx-auto max-w-md space-y-2">
+                        {hint && <p className="text-sm text-amber-300">{hint}</p>}
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={onBack}
+                                disabled={index === 0}
+                                className="flex-1 rounded-lg bg-white/10 py-2.5 font-medium disabled:opacity-30"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onNext}
+                                disabled={nextDisabled}
+                                className="flex-1 rounded-lg bg-white py-2.5 font-medium text-black disabled:opacity-40"
+                            >
+                                {nextLabel}
+                            </button>
+                        </div>
+                    </div>
                 </footer>
             </div>
         </main>

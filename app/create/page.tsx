@@ -10,12 +10,15 @@ import StepAccess from "@/features/wizard/StepAccess";
 import ResultScreen from "@/features/wizard/ResultScreen";
 import { createProject } from "@/src/lib/projectsClient";
 import { saveMine } from "@/src/lib/myProjects";
-
+import StepDesign from "@/features/wizard/StepDesign";
+import DesignWorkspace from "@/features/design/DesignWorkspace";
+import DesignPreview from "@/features/design/DesignPreview";
 
 
 const STEPS : StepDef[] = [
     {id : "event" , label : "Event"},
     {id : "host" , label : "Host"},
+    { id: "design", label: "Design" },
     {id : "access" , label : "Access"},
 ];
 
@@ -101,9 +104,15 @@ export default function CreatePage(){
             nextLabel = {last ? (busy ? "Creating..." : "Create invitation") : "Next"}
             nextDisabled = { !!error || busy }
             hint = {error ?? submitError}
+            wide = {step.id === "design"}
         >
             {step.id === "event" && <StepEvent draft={draft} update={update} /> }
             {step.id === "host" && <StepHost draft={draft} update={update} /> }
+            {step.id === "design" && (
+                <DesignWorkspace preview={<DesignPreview draft={draft} />}>
+                    <StepDesign draft={draft} update={update} />
+                </DesignWorkspace>
+            )}
             {step.id === "access" &&  <StepAccess draft={draft} update={update} />}
         </WizardShell>
     );

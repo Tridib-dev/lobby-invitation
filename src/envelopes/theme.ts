@@ -87,7 +87,7 @@ export const ENVELOPE_THEMES: readonly EnvelopeTheme[] = [
   },
   {
     id : "wedding",
-    name : "wedding : Ivory , gold & burgandy",
+    name : "Wedding: ivory, gold & burgundy",
     paper : "#450c19",
     paperPattern : { kind : "image", src : "/patterns/embroidery-pattern.webp" , tiles : 0.6, opacity : 0.35 , color : "#000" ,blend : "overlay" , raised : true},
     flapPaper : "#5a1424",

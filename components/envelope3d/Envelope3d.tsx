@@ -887,21 +887,35 @@ function Scene({
     );
 }
 
+
+
+function FitCamera() {
+  useFrame(({ camera , size}) => {
+    const aspect = size.width / size.height;
+    const z = 9.2 * Math.max(1,1.286 / aspect );
+    if(camera.position.z !== z) camera.position.z = z; 
+  });
+  return null;
+}
+
 export default function Envelope3D({
   theme,
   letter,
   accent,
   onOpened,
+  fill,
 }: {
   theme: EnvelopeTheme;
   letter: LetterContent;
   accent?: string;
   onOpened?: () => void;
+  fill?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ width: "100%", maxWidth: 720, height: 560 }}>
       <Canvas shadows="soft" camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }} dpr={[3, 3]}>
+        <FitCamera />
         <Scene
           open={open}
           theme={theme}
