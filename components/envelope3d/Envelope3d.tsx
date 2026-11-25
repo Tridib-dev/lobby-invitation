@@ -887,13 +887,19 @@ function Scene({
     );
 }
 
-
+const TAN_HALF = Math.tan((35 / 2) * (Math.PI / 180));
 
 function FitCamera() {
-  useFrame(({ camera , size}) => {
+  useFrame(({ camera, size }) => {
+    if (!size.width || !size.height) return;
     const aspect = size.width / size.height;
-    const z = 9.2 * Math.max(1,1.286 / aspect );
-    if(camera.position.z !== z) camera.position.z = z; 
+    const needW = Math.max(W, LW * 1.3) * 1.25;
+    const needH = Math.max(H * 2.3, LH * 1.3) * 1.25;
+    const z = Math.max(needH / (2 * TAN_HALF), needW / (2 * TAN_HALF * aspect));
+    if (camera.position.z !== z) {
+      camera.position.z = z;
+      camera.lookAt(0, 0, 0);
+    }
   });
   return null;
 }
@@ -913,8 +919,12 @@ export default function Envelope3D({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ width: "100%", maxWidth: 720, height: 560 }}>
-      <Canvas shadows="soft" camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }} dpr={[3, 3]}>
+    <div style={fill ? { width: "100%", height: "100%" } : { width: "100%", maxWidth: 720, height: 560 }}>
+      <Canvas
+        shadows="soft"
+        camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }}
+        dpr={fill ? [1, 2] : [3, 3]}
+      >
         <FitCamera />
         <Scene
           open={open}

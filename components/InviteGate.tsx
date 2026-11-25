@@ -32,8 +32,11 @@ export default function InviteGate({id , initial} : {id : string , initial : Pro
         } 
     }
 
-    if(!project.locked) return <InviteExperience invite={project} />
-
+    if(!project.locked) return (
+        <main className="h-dvh w-full bg-neutral-900">
+            <InviteExperience invite={project} fill />
+        </main>
+    );
     return (
         <main className="flex min-h-screen items-center justify-center bg-neutral-900 p-6 text-white">
             <form onSubmit={unlock} className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-6">
