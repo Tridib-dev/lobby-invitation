@@ -1,0 +1,120 @@
+.card-root {
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+  background-size: cover;
+  background-position: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+.card-slot {
+  text-wrap: balance;
+}
+
+.card-anim {
+  animation-duration: var(--dur, 6s);
+  animation-delay: var(--delay, 0s);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  animation-direction: alternate;
+  will-change: transform;
+}
+
+.card-m-drift {
+  animation-name: card-drift;
+}
+.card-m-float {
+  animation-name: card-float;
+}
+.card-m-sway {
+  animation-name: card-sway;
+  transform-origin: 50% 0%;
+}
+.card-m-pulse {
+  animation-name: card-pulse;
+}
+.card-m-rotate {
+  animation-name: card-rotate;
+  animation-direction: normal;
+  animation-timing-function: linear;
+}
+
+@keyframes card-drift {
+  from {
+    transform: translateX(calc(var(--amt, 2) * -1cqw));
+  }
+  to {
+    transform: translateX(calc(var(--amt, 2) * 1cqw));
+  }
+}
+@keyframes card-float {
+  from {
+    transform: translateY(calc(var(--amt, 2) * -1cqw));
+  }
+  to {
+    transform: translateY(calc(var(--amt, 2) * 1cqw));
+  }
+}
+@keyframes card-sway {
+  from {
+    transform: rotate(calc(var(--amt, 4) * -1deg));
+  }
+  to {
+    transform: rotate(calc(var(--amt, 4) * 1deg));
+  }
+}
+@keyframes card-pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(calc(1 + var(--amt, 4) / 100));
+  }
+}
+@keyframes card-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.card-skeleton {
+  background: linear-gradient(110deg, #1f1f1f 30%, #2c2c2c 50%, #1f1f1f 70%);
+  background-size: 200% 100%;
+  animation: card-shimmer 1.4s linear infinite;
+  display: flex;
+  align-items: flex-end;
+}
+.card-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.7);
+  transition: width 0.2s ease-out;
+}
+@keyframes card-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-anim,
+  .card-skeleton {
+    animation: none !important;
+  }
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity : 0;
+  }
+  to {
+    opacity : 1;
+  }
+}
