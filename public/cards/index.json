@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "nature-1",
+      "name": "nature-1",
+      "genre": "wedding",
+      "aspect": 0.5625,
+      "bg": "/cards/nature-1/bg.webp"
+    }
+  ]
+}

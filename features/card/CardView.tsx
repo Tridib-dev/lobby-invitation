@@ -29,6 +29,7 @@ export default function CardView({
   fit = "contain",
   paused,
   editor,
+  unfold,
   onReady,
 }: {
   spec: CardSpec;
@@ -36,6 +37,7 @@ export default function CardView({
   fit?: "contain" | "width";
   paused?: boolean;
   editor?: EditorApi;
+  unfold?: boolean;
   onReady?: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -123,16 +125,20 @@ export default function CardView({
   return wrap(
     <div
       ref={rootRef}
-      className="card-root"
+      className={unfold ? "card-root card-unfold" : "card-root"}
       style={{
         ...sizeStyle,
         backgroundColor: spec.bg.color,
         backgroundImage: spec.bg.src ? `url("${encodeURI(spec.bg.src)}")` : undefined,
+        ...(unfold
+          ? ({ "--unfold-inset": `${((1 - Math.min(1, spec.aspect / 1.48)) / 2) * 100}%` } as React.CSSProperties)
+          : {}),
       }}
       onPointerMove={pointerMove}
       onPointerLeave={pointerLeave}
       onPointerDown={() => editor?.onSelect(null)}
     >
+      {unfold && <div className="card-veil" />}
       {spec.layers.map((l) => {
         const m = l.motion;
         const animated = !paused && !editor && m.kind !== "none";

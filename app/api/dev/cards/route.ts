@@ -7,7 +7,24 @@ const ID = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const IMG = /\.(png|webp|jpe?g|svg|gif)$/i;
 
 async function rebuildIndex() {
-  const entries = await fs.
+  const entries = await fs.readdir(ROOT , { withFileTypes : true}).catch(() => []);
+  const items : { id : string ; name : string ; genre : string; aspect : number; bg : string | null }[] = [];
+
+  for (const e of entries) {
+    if(!e.isDirectory()) continue;
+    try {
+      const spec = JSON.parse(await fs.readFile(path.join(ROOT , e.name , "spec.json") , "utf8"));
+      items.push({
+        id : spec.id,
+        name : spec.name,
+        genre : spec.genre,
+        aspect : spec.aspect,
+        bg : spec.bg?.src ?? null,
+      });
+    } catch {}
+  }
+  items.sort((a,b) => a.genre.localeCompare(b.genre) || a.id.localeCompare(b.id));
+  await fs.writeFile(path.join(ROOT , "index.json") , JSON.stringify({ items } , null , 2) , "utf8")
 }
 
 const off = () => NextResponse.json({ error: "Not available" }, { status: 404 });
@@ -56,5 +73,6 @@ export async function POST(req: Request) {
   }
 
   await fs.writeFile(path.join(ROOT, t, "spec.json"), JSON.stringify(spec, null, 2), "utf8");
+  await rebuildIndex();
   return NextResponse.json({ ok: true });
 }

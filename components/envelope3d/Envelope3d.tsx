@@ -20,6 +20,7 @@ export interface LetterContent {
   date: string; // already formatted for display
   location: string;
   note: string;
+  blank?: boolean;
 }
 
 
@@ -252,6 +253,12 @@ function makeLetterTexture(c: LetterContent, accent: string): THREE.CanvasTextur
   for (let i = 0; i < 6000; i++) {
     g.fillStyle = `rgba(120,100,70,${Math.random() * 0.05})`;
     g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 3, 1);
+  }
+  if(c.blank) {
+    const blankTex = new THREE.CanvasTexture(cv);
+    blankTex.colorSpace = THREE.SRGBColorSpace;
+    blankTex.anisotropy = 4;
+    return blankTex; 
   }
   g.strokeStyle = accent;
   g.lineWidth = 3;

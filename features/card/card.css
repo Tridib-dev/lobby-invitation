@@ -103,12 +103,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .card-anim,
-  .card-skeleton {
-    animation: none !important;
-  }
-}
+
 
 @keyframes card-fade-in {
   from {
@@ -116,5 +111,55 @@
   }
   to {
     opacity : 1;
+  }
+}
+
+.card-unfold{
+  animation: card-unfold 1.4s cubic-bezier(0.22,0.8,0.2,1) 0.3s both;
+  transform-origin: 50% 50%;
+}
+
+@keyframes card-unfold {
+  0% {
+    clip-path : inset(var(-unfold-inset , 25%) 0 var(--unfold-inset , 25%) 0 round 6px);
+    transfor: perspective(1400px) rotateX(24deg) scale(0.9);
+  }
+  100% {
+    clip-path : inset(0 0 0 0 round 0px);
+    transform : perspective(1400px) rotateX(0deg) scale(1.0);
+  }
+}
+
+.card-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: #fffaf0;
+  pointer-events: none;
+  animation: card-veil 1.4s ease-in 0.3s both;
+}
+
+@keyframes card-veil{
+  0% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-anim,
+  .card-skeleton {
+    animation: none !important;
+  }
+  .card-unfold {
+    animation: none !important;
+  }
+  .card-veil {
+    display: none;
   }
 }

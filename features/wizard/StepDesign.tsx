@@ -4,6 +4,7 @@ import { ACCENTS , SEALS } from "@/src/envelopes/design";
 import { ENVELOPE_THEMES } from "@/src/envelopes/theme";
 import type { Design } from "@/src/lib/projectsClient";
 import type { Draft } from "./types";
+import CardPicker from "../card/CardPicker";
 
 function withDesign(d : Design , patch : Partial<Design>) : Design {
     const next = { ...d , ...patch } as Record<string , unknown>;
@@ -30,6 +31,12 @@ export default function StepDesign({
 
     return (
         <>
+
+            <div className="space-y-2">
+                <h2 className="font-medium text-white">Card</h2>
+                <p className="text-xs text-whie/50">Shown after the envelope opens. Use the card tab tab in the preview.</p>
+                <CardPicker value={d.cardLayout} onChange={(id) => set({ cardLayout : id })} />
+            </div>
             <div className="space-y-2">
                 <h2 className="font-medium text-white">Envelope</h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -40,7 +47,7 @@ export default function StepDesign({
                                     <span key={i} className="h-5 w-5 rounded-full border border-white/20" style={{ background : c }} />
                                 ))}
                             </span>    
-                            <span className="mt-1.5 block text=sm text-white">{t.name}</span>
+                            <span className="mt-1.5 block text-sm text-white">{t.name}</span>
                         </button>
                     ))}
                 </div>
