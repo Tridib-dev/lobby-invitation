@@ -21,7 +21,7 @@ export default function Playground() {
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-neutral-900 p-8 text-white">
-      <Envelope3D key={`${theme.id}-${run}`} theme={theme} letter={LETTER} />
+      <Envelope3D key={`${theme.id}-${run}`} theme={theme} letter={LETTER} cardTexts={{ ...LETTER , host : "" }} />
       <p className="text-sm text-white/60">Click the seal</p>
       <div className="flex flex-wrap justify-center gap-2">
         {ENVELOPE_THEMES.map((t) => (
