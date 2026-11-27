@@ -1150,6 +1150,7 @@ export default function Envelope3D({
   cardTexts,
   onOpened,
   fill,
+  onOpenStart,
 }: {
   theme: EnvelopeTheme;
   letter: LetterContent;
@@ -1158,6 +1159,7 @@ export default function Envelope3D({
   cardTexts: CardTexts;
   onOpened?: () => void;
   fill?: boolean;
+  onOpenStart?: () => void; 
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1175,7 +1177,11 @@ export default function Envelope3D({
           accent={accent}
           cardSpec={cardSpec}
           cardTexts={cardTexts}
-          onOpen={() => setOpen(true)}
+          onOpen={() => {
+            if(open) return;
+            setOpen(true);
+            onOpenStart?.();
+          }}
           onOpened={onOpened}
         />
       </Canvas>

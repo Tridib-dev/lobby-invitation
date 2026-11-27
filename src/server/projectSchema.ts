@@ -1,4 +1,15 @@
 import {z} from "zod";
+import { isAppleHost } from "../lib/music";
+
+
+export const MusicSchema = z.object({
+    trackId : z.number().int().positive(),
+    name : z.string().trim().max(120),
+    artist: z.string().trim().max(120),
+    artwork : z.string().max(300).refine(isAppleHost , "Bad artwork URL"),
+    start : z.number().min(0).max(30),
+    end : z.number().min(0).max(30),
+}).refine((m) => m.end - m.start >= 3, {message : "The loop must be atleat 3 seconds" , path : ["end"] })
  
 export const DesignSchema = z.object({
     v : z.literal(1),
@@ -10,6 +21,7 @@ export const DesignSchema = z.object({
     ornament : z.boolean().optional(),
     divider : z.string().max(40).optional(),
     motion : z.enum(["off","subtle"]).optional(),
+    music : MusicSchema.optional(),
 })
 
 export const CreateSchema = z.object({

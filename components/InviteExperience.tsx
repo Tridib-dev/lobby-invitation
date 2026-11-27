@@ -10,6 +10,8 @@ import { useCardSpec } from "@/features/card/useCardSpec";
 import { formatWhen } from "@/src/cards/format";
 import { useImagePreload } from "@/features/card/useImagePreload";
 import { specUrls } from "@/src/cards/spec";
+import { useAudioLoop } from "@/features/music/useLoopAudio";
+import SoundToggle from "@/features/music/SoundToggle";
 
 
 
@@ -40,6 +42,9 @@ export default function InviteExperience({ invite , fill } : { invite : Shown ; 
     useImagePreload(spec ? specUrls(spec) : []);
 
     const when = useMemo(() => formatWhen(startsAt) , [startsAt]);
+
+    const music= design?.music;
+    const sound = useAudioLoop(music?.trackId , music?.start , music?.end);
 
     const letter = useMemo(
         () => ({
@@ -73,7 +78,11 @@ export default function InviteExperience({ invite , fill } : { invite : Shown ; 
                 cardTexts={texts}
                 accent={accent}
                 fill={fill}
-            />            
+                onOpenStart={() => sound.play()}
+            />     
+            {sound.ready && (
+                <SoundToggle muted={sound.muted} appleUrl={sound.appleUrl} onToggle={sound.toggleMute} />
+            )}       
         </div>
     );
 }
