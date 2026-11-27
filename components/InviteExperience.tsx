@@ -1,13 +1,15 @@
 "use client";
 
 
-import { useMemo , useCallback , useState } from "react";
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { Design } from "@/src/lib/projectsClient";
 import { accentHex, buildTheme } from "@/src/envelopes/design";
 import { useCardSpec } from "@/features/card/useCardSpec";
-import CardPanel from "@/features/card/CardPanel";
+
 import { formatWhen } from "@/src/cards/format";
+import { useImagePreload } from "@/features/card/useImagePreload";
+import { specUrls } from "@/src/cards/spec";
 
 
 
@@ -29,13 +31,13 @@ type Shown = {
 export default function InviteExperience({ invite , fill } : { invite : Shown ; fill?: boolean}) {
     const { title , location , message , hostName , startsAt , design } = invite;
 
-    const [ opened , setOpened ] = useState(false);
-    const handleOpened = useCallback(() => setOpened(true) , []);
+    
 
     const theme = useMemo(() => buildTheme(design) , [design]);
     const accent = accentHex(design?.accent);
     const cardId = design?.cardLayout;
     const { spec } = useCardSpec(cardId);
+    useImagePreload(spec ? specUrls(spec) : []);
 
     const when = useMemo(() => formatWhen(startsAt) , [startsAt]);
 
@@ -67,30 +69,11 @@ export default function InviteExperience({ invite , fill } : { invite : Shown ; 
             <Envelope3D
                 theme={theme}
                 letter={letter}
+                cardSpec={spec}
+                cardTexts={texts}
                 accent={accent}
                 fill={fill}
-                onOpened={handleOpened}
             />            
-            {opened && spec && (
-                <div
-                    data-card-overlay="true"
-                    style={{
-                        position : "absolute",
-                        inset : 0,
-                        top : 0,
-                        right : 0,
-                        bottom : 0,
-                        left : 0,
-                        zIndex : 5,
-                        padding : 12,
-                        background : "rgba(0,0,0,0.75)",
-                        animation : "card-fade-in 0.7s ease-out both",
-                    }}
-                    
-                >
-                    <CardPanel id={cardId} texts={texts} unfold />
-                </div>
-            )}
         </div>
     );
 }

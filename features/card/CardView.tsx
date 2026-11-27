@@ -30,6 +30,8 @@ export default function CardView({
   paused,
   editor,
   unfold,
+  inherit,
+  preloaded,
   onReady,
 }: {
   spec: CardSpec;
@@ -38,6 +40,8 @@ export default function CardView({
   paused?: boolean;
   editor?: EditorApi;
   unfold?: boolean;
+  inherit? : boolean;
+  preloaded?: boolean;
   onReady?: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -48,7 +52,8 @@ export default function CardView({
     return Array.from(new Set(list));
   }, [spec.bg.src, spec.layers]);
 
-  const { done, progress } = useImagePreload(urls);
+  const { done : loaded , progress } =  useImagePreload(urls);
+  const done = preloaded || loaded;
 
   useEffect(() => {
     if (done) onReady?.();
@@ -77,7 +82,7 @@ export default function CardView({
   }
 
   function pointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (editor || paused) return;
+    if (inherit || editor || paused) return;
     const el = rootRef.current;
     if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const r = el.getBoundingClientRect();
@@ -87,7 +92,7 @@ export default function CardView({
 
   function pointerLeave() {
     const el = rootRef.current;
-    if (!el) return;
+    if (inherit || !el) return;
     el.style.setProperty("--px", "0");
     el.style.setProperty("--py", "0");
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import CardView from "./CardView";
+import Foldcard from "./Foldcard";
 import { useCardSpec } from "./useCardSpec";
 import type { CardTexts } from "@/src/cards/spec";
 
@@ -8,12 +9,12 @@ export default function CardPanel ({
     id,
     texts,
     showStatus,
-    unfold,
+    fold,
 } : {
     id?: string;
     texts : CardTexts;
     showStatus?: boolean;
-    unfold ?: boolean;
+    fold?: boolean;
 }) {
     const { spec , loading } = useCardSpec(id);
 
@@ -27,5 +28,5 @@ export default function CardPanel ({
         );
     }
 
-    return <CardView spec={spec} texts={texts}  unfold={unfold}/>
+    return fold ? <Foldcard spec={spec} texts={texts}/> : <CardView spec={spec} texts={texts} />
 }

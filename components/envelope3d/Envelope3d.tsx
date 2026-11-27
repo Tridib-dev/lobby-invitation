@@ -14,6 +14,137 @@ import{
   POCKET_DEPTH, Z_FRONT, Z_FLAP_CLOSED, Z_FLAP_OPEN, LW, LH, LETTER_Y0, LETTER_RISE_Y,
 } from "./constants";
 import { type Progress, clamp01, smooth, shadeHex } from "./math";
+import {
+  slotText,
+  type CardSpec,
+  type CardTexts,
+  type SlotFont,
+} from "@/src/cards/spec";
+
+
+const SLOT_FONTS  : Record<SlotFont , string> = {
+  serif : 'Georgia, "Times New Roman" , serif',
+  script : '"Brush Script MT", cursive',
+  sans : "system-ui , sans-serif",
+}
+
+
+function loadCanvasImage (src:string) : Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+function wrapCanvasText (
+  ctx : CanvasRenderingContext2D,
+  text : string,
+  maxWidth : number,
+) {
+  const lines : string[] = [];
+  let line = "";
+
+  for(const word of text.split(/\s+/)) {
+    const candidate = line ? `${line} ${word}` : word;
+
+    if (line && ctx.measureText(candidate).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  
+  if(line) lines.push(line);
+  return lines;
+}
+
+async function makeCardTexture(spec:CardSpec , texts : CardTexts ) : Promise<THREE.CanvasTexture> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1536;
+  canvas.height = Math.round(canvas.width / spec.aspect );
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = spec.bg.color;
+  ctx.fillRect(0,0, canvas.width,canvas.height);
+
+  const urls = [spec.bg.src, ...spec.layers.map((layer) => layer.src)].filter((src) : src is string => !!src);
+  const images = new Map<string, HTMLImageElement>();
+
+  await Promise.all(urls.map(async (src) => {
+    try {
+      images.set(src,await loadCanvasImage(src));
+    } catch {
+      // Keep rendering the rest of the card if an optional image fails.
+    }
+  }));
+
+  if (spec.bg.src) {
+    const bg = images.get(spec.bg.src);
+    if(bg) {
+      const scale = Math.max(
+        canvas.width / bg.width,
+        canvas.height / bg.height,
+      )
+
+      const width = bg.width * scale ;
+      const height = bg.height * scale;
+
+      ctx.drawImage(
+        bg,
+        (canvas.width - width) / 2,
+        (canvas.height - height) / 2,
+        width,
+        height,
+      );
+    }
+  }
+
+  for (const layer of [...spec.layers].sort((a,b) => a.z - b.z)){
+    const image = images.get(layer.src);
+    if(!image) continue;
+
+    const width = canvas.width * layer.w / 100;
+    const height = width * image.height / image.width;
+    
+    ctx.save();
+    ctx.translate(canvas.width * layer.x / 100, canvas.height * layer.y / 100);
+    ctx.rotate(layer.rotate * Math.PI / 180);
+    ctx.drawImage(image,-width/2 , -height / 2 , width, height)
+    ctx.restore();
+  }
+
+  for (const slot of [...spec.slots].sort((a,b) => a.z - b.z)) {
+    const value = slotText(slot.key , texts);
+
+    if(!value) continue;
+
+    ctx.save();
+    ctx.fillStyle = slot.color;
+    ctx.textAlign = slot.align;
+    ctx.textBaseline  = "middle";
+    ctx.font = `${slot.weight} ${slot.size * canvas.width / 100}px ${SLOT_FONTS[slot.font]}`;
+
+    const text = slot.upper ? value.toUpperCase() : value;
+    const x = canvas.width * slot.x / 100;
+    const centerY = canvas.height * slot.y / 100;
+    const maxWidth = canvas.width * slot.w / 100;
+    const fontSize = slot.size * canvas.width / 100;
+    const lines = wrapCanvasText(ctx , text , maxWidth);
+
+    lines.forEach((line, index) => {
+      const y = centerY + (index - (lines.length - 1) / 2) * fontSize * 1.15;
+      ctx.fillText(line , x , y);      
+    });
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy =16;
+  return texture;
+}
 export interface LetterContent {
   guest: string;
   title: string;
@@ -693,49 +824,110 @@ function Letter({
   P,
   map,
   bump,
+  aspect,
+  open,
 }: {
   P: React.RefObject<Progress>;
   map: THREE.Texture;
   bump: THREE.Texture;
+  aspect: number;
+  open: boolean;
 }) {
-    const ref = useRef<THREE.Mesh>(null);
-    const geo = useMemo(() => new THREE.PlaneGeometry(LW, LH, 12, 8), []);
+  const paper = useRef<THREE.Group>(null);
+  const hinge = useRef<THREE.Group>(null);
 
-    useFrame(() => {
-        const m = ref.current;
-        if (!m) return;
-        const u = P.current.pull;
+  const paperWidth = Math.min(LW , (H - 0.12)  * aspect * 2 , W - 0.12);
+  const fullHeight = paperWidth / aspect;
+  const halfHeight = fullHeight / 2;
 
-        const up = clamp01(u / 0.6);
-        const rise = 1 - (1 - up) * (1 - up); // fast start, eases out
-        const d = clamp01((u - 0.5) / 0.5);
-        const zq = smooth(clamp01(d / 0.35)); // comes forward once clear of the pocket
-        const yq = smooth(clamp01((d - 0.35) / 0.65)); // then settles to centre
-        const hand = Math.sin(Math.PI * up) * (1 - zq);
+  const topTexture = useMemo(() => {
+    const texture = map.clone();
+    texture.repeat.set(1,0.5);
+    texture.offset.set(0,0.5);
+    texture.needsUpdate = true;
+    return texture;
+  },[map]);
 
-        const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(LETTER_Y0, LETTER_RISE_Y, rise), 0.3, yq);
-        const z = Z_LETTER + 0.35 * zq + 1.2 * yq;
+  const bottomTexture = useMemo(() => {
+    const texture = map.clone();
+    texture.repeat.set(1,0.5);
+    texture.offset.set(0,0);
+    texture.needsUpdate = true;
+    return texture;
+  },[map])
 
-        m.position.set(0, y, z);
-        m.rotation.set(-0.06 * yq, 0, 0.035 * hand);
-        m.scale.setScalar(1 + 0.25 * yq);
+  useEffect(() => {
+    const group = hinge.current;
+    if(!group) return;
 
-        const bow = 0.05 * hand;
-        const g = m.geometry;
-        const pos = g.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            const t = (pos.getY(i) / (LH / 2) + 1) / 2;
-            pos.setZ(i, bow * t * t * t);
-        }
-        pos.needsUpdate = true;
-        g.computeVertexNormals();
+    gsap.to(group.rotation , {
+      x: open ? 0 : Math.PI,
+      duration : open ? 0.8 : 0,
+      ease : "power2.inOut",
+      overwrite:true,
     });
+  },[open]);
+
+  useFrame(() => {
+    const group = paper.current;
+    if(!group) return;
+
+    const u = P.current.pull;
+    const up = clamp01(u / 0.6);
+
+
+
+    const clearY = H / 2 + halfHeight + 0.12;
+    const extract = smooth(clamp01(u / 0.68));
+    const raisedY = THREE.MathUtils.lerp(
+      halfHeight/2,
+      clearY,
+      extract,
+    );
+
+    const bringForward = smooth(clamp01((u - 0.68) / 0.17));
+    const z = Z_LETTER + 1.55 * bringForward;
+
+    const settle = smooth(clamp01((u - 0.85) / 0.15));
+    const y = THREE.MathUtils.lerp(raisedY ,0.3 , settle);
+
+    group.position.set(0 , y , z);
+    group.rotation.set(-0.06 * bringForward , 0 , 0);
+  });
 
   return (
-    <mesh ref={ref} geometry={geo} position={[0, LETTER_Y0, Z_LETTER]} castShadow receiveShadow>
-        <meshStandardMaterial map={map} roughness={0.9} bumpMap={bump} bumpScale={0.35} side={THREE.DoubleSide} />
-    </mesh>
-  );
+    <group ref={paper} position={[0 , LETTER_Y0 , Z_LETTER]} >
+      <mesh position={[0 , -halfHeight / 2 , 0]} castShadow receiveShadow >
+        <planeGeometry args={[paperWidth , halfHeight , 8 , 4]} />
+        <meshBasicMaterial 
+          map={bottomTexture}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <group ref={hinge} position={[0 , 0 , 0]} rotation={[Math.PI , 0 , 0]} >
+        <mesh position={[0 , halfHeight / 2 , 0]} castShadow receiveShadow >
+          <planeGeometry args={[paperWidth , halfHeight , 8 , 4]} />
+          <meshBasicMaterial 
+            map={topTexture}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        <mesh
+          position={[ 0 , halfHeight / 2 , -0.002]}
+          rotation={[0 , Math.PI , 0]}
+        >
+          <planeGeometry args={[paperWidth , halfHeight]} />
+          <meshStandardMaterial
+            color="#fffaf0"
+            roughness={0.95}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
+    </group>
+  )
 }
 
 /* ---------------- thick envelope body ---------------- */
@@ -796,6 +988,8 @@ function Scene({
   theme,
   letter,
   accent,
+  cardSpec,
+  cardTexts,
   onOpen,
   onOpened,
 }: {
@@ -803,6 +997,8 @@ function Scene({
   theme: EnvelopeTheme;
   letter: LetterContent;
   accent?: string;
+  cardSpec?: CardSpec | null;
+  cardTexts: CardTexts;
   onOpen: () => void;
   onOpened?: () => void;
 }) {
@@ -818,7 +1014,29 @@ function Scene({
     const flapInside = useMemo(() => makeFlapInside(theme.liner, theme.paper, theme.linerPattern, theme.flap),[theme]);
     const sealColor = theme.seal.finish === "metal" ? theme.seal.color : (accent ?? theme.seal.color);
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
+    const [ loadedCards , setLoadedCards ] = useState<{
+      spec : CardSpec;
+      texture : THREE.CanvasTexture;
+    } | null>(null);
 
+    const [ cardOpen , setCardOpen ] = useState(false);
+    useEffect(() => {
+      let cancelled = false;
+      if(!cardSpec) return;
+
+      void makeCardTexture(cardSpec , cardTexts).then((texture) => {
+        if(cancelled) {
+          texture.dispose();
+          return;
+        }
+        setLoadedCards({ spec : cardSpec , texture });
+      });
+      return () => {
+        cancelled = true;
+      };
+    } , [cardSpec,cardTexts]);
+
+    const cardTex = loadedCards?.spec === cardSpec ? loadedCards?.texture : null;
     const openedRef = useRef(onOpened);
     useEffect(() => {
         openedRef.current = onOpened;
@@ -831,7 +1049,8 @@ function Scene({
         tl.to(p, { seal: 1, duration: 0.9, ease: "power2.out" }, 0)
             .addLabel("flap", 0.35)
             .to(p, { flap: 1, duration: 0.9, ease: "power2.inOut" }, "flap")
-            .to(p, { pull: 1, duration: 2.2, ease: "power1.inOut" }, "flap+=0.8");
+            .to(p, { pull: 1, duration: 1.5 , ease: "power1.inOut" }, "flap+=0.45")
+            .call(() => setCardOpen(true));
         return () => {
             tl.kill();
         };
@@ -876,7 +1095,13 @@ function Scene({
                 <meshStandardMaterial attach="material-1" map={outside} color="#cfcfcf" roughness={0.9} />
                 </mesh>
 
-                <Letter P={P} map={letterTex} bump={bump} />
+                <Letter
+                  P={P}
+                  map={cardTex ?? letterTex}
+                  bump={bump}
+                  aspect={cardSpec?.aspect ?? LW / LH}
+                  open={!!cardTex && cardOpen}
+                />
 
                 {/* thick front pocket */}
                 <mesh geometry={pocket} position={[0, 0, Z_POCKET]} castShadow receiveShadow>
@@ -890,19 +1115,25 @@ function Scene({
             </group>
 
             <ContactShadows position={[0, -H / 2 - 0.5, 0]} opacity={0.5} scale={9} blur={2.6} far={3} />
+
         </>
     );
 }
 
 const TAN_HALF = Math.tan((35 / 2) * (Math.PI / 180));
 
-function FitCamera() {
+function FitCamera({ cardAspect } : { cardAspect?: number}) {
+  const aspectRatio = cardAspect ?? LW / LH;
+  const cardWidth = Math.min(LW , (H - 0.12) * aspectRatio * 2, W - 0.12 );
+  const cardHeight = cardWidth / aspectRatio;
+
   useFrame(({ camera, size }) => {
     if (!size.width || !size.height) return;
-    const aspect = size.width / size.height;
-    const needW = Math.max(W, LW * 1.3) * 1.25;
-    const needH = Math.max(H * 2.3, LH * 1.3) * 1.25;
-    const z = Math.max(needH / (2 * TAN_HALF), needW / (2 * TAN_HALF * aspect));
+    const viewAspect = size.width / size.height;
+    const fitMargin = size.width >= 1280 ? 1.2 : 1.08;
+    const needW = Math.max(W, cardWidth) * fitMargin;
+    const needH = Math.max(H + FLAP_H, cardHeight) * fitMargin;
+    const z = Math.max(needH / (2 * TAN_HALF), needW / (2 * TAN_HALF * viewAspect));
     if (camera.position.z !== z) {
       camera.position.z = z;
       camera.lookAt(0, 0, 0);
@@ -915,12 +1146,16 @@ export default function Envelope3D({
   theme,
   letter,
   accent,
+  cardSpec,
+  cardTexts,
   onOpened,
   fill,
 }: {
   theme: EnvelopeTheme;
   letter: LetterContent;
   accent?: string;
+  cardSpec?: CardSpec | null;
+  cardTexts: CardTexts;
   onOpened?: () => void;
   fill?: boolean;
 }) {
@@ -928,16 +1163,18 @@ export default function Envelope3D({
   return (
     <div style={fill ? { width: "100%", height: "100%" } : { width: "100%", maxWidth: 720, height: 560 }}>
       <Canvas
-        shadows="soft"
+        shadows="percentage"
         camera={{ position: [0.3, 0.9, 9.2], fov: 35, near: 0.5, far: 30 }}
         dpr={fill ? [1, 2] : [3, 3]}
       >
-        <FitCamera />
+        <FitCamera cardAspect={cardSpec?.aspect}/>
         <Scene
           open={open}
           theme={theme}
           letter={letter}
           accent={accent}
+          cardSpec={cardSpec}
+          cardTexts={cardTexts}
           onOpen={() => setOpen(true)}
           onOpened={onOpened}
         />

@@ -161,3 +161,9 @@ export function mergeFiles(spec: CardSpec, files: string[]): CardSpec {
   }
   return { ...spec, layers };
 }
+
+
+export function specUrls(spec : CardSpec) : string[] {
+  const list = [spec.bg.src , ...spec.layers.map((l) => l.src)].filter((u): u is string => !!u);
+  return  Array.from(new Set(list));
+}
