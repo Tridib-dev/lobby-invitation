@@ -20,7 +20,8 @@ import {
   type CardTexts,
   type SlotFont,
 } from "@/src/cards/spec";
-
+import { CardLayer } from "@/src/cards/spec";
+import { scale } from "motion";
 
 const SLOT_FONTS  : Record<SlotFont , string> = {
   serif : 'Georgia, "Times New Roman" , serif',
@@ -37,6 +38,7 @@ function loadCanvasImage (src:string) : Promise<HTMLImageElement> {
     image.src = src;
   });
 }
+
 function wrapCanvasText (
   ctx : CanvasRenderingContext2D,
   text : string,
@@ -60,90 +62,176 @@ function wrapCanvasText (
   return lines;
 }
 
-async function makeCardTexture(spec:CardSpec , texts : CardTexts ) : Promise<THREE.CanvasTexture> {
+
+type LayerTransform = {
+  x : number;
+  y : number;
+  rotation : number;
+  scale : number; 
+};
+
+function sampleLayerMotion (
+  layer : CardLayer,
+  seconds : number,
+  cardWidth : number,
+) : LayerTransform {
+  const m = layer.motion;
+  const rest = { x : 0 , y : 0 , rotation : 0 , scale : 1 };
+  if(m.kind === "none" || seconds < m.delay) return rest;
+
+  const duration = Math.max(m.duration , 0.01);
+  const phase = (seconds - m.delay) / duration;
+
+  const progress = m.kind === "rotate" ? phase % 1 : (phase % 2 <= 1 ? phase % 2 : 2 - (phase % 2));
+
+  const offset = ((progress * 2 - 1) * m.amount * cardWidth) / 100;
+
+  switch (m.kind) {
+    case "drift" :
+      return { ...rest , x : offset}; 
+    case "float" :
+      return {...rest , y : offset};
+    case "sway" :
+      return {...rest , rotation : (progress *2 - 1) * m.amount};
+    case "pulse" :
+      return {...rest , scale: 1 + (progress * m.amount) / 100};
+    case "rotate" :
+      return {...rest , rotation : progress * 360 };
+    default :
+      return rest;
+  }
+}
+
+type CardTextureRenderer = {
+  texture : THREE.CanvasTexture;
+  redraw : (seconds : number) => void;
+};
+
+async function makeCardTexture(spec: CardSpec,texts: CardTexts): Promise<CardTextureRenderer> {
   const canvas = document.createElement("canvas");
-  canvas.width = 1536;
-  canvas.height = Math.round(canvas.width / spec.aspect );
+  canvas.width = 2048;
+  canvas.height = Math.round(canvas.width / spec.aspect);
+
   const ctx = canvas.getContext("2d")!;
+  if (!ctx) {
+    throw new Error("Could not create invitation card canvas");
+  }
 
-  ctx.fillStyle = spec.bg.color;
-  ctx.fillRect(0,0, canvas.width,canvas.height);
+  const urls = [spec.bg.src, ...spec.layers.map((layer) => layer.src)].filter(
+    (src): src is string => !!src,
+  );
 
-  const urls = [spec.bg.src, ...spec.layers.map((layer) => layer.src)].filter((src) : src is string => !!src);
   const images = new Map<string, HTMLImageElement>();
 
-  await Promise.all(urls.map(async (src) => {
-    try {
-      images.set(src,await loadCanvasImage(src));
-    } catch {
-      // Keep rendering the rest of the card if an optional image fails.
-    }
-  }));
+  await Promise.all(
+    urls.map(async (src) => {
+      try {
+        images.set(src, await loadCanvasImage(src));
+      } catch {
+        // Continue rendering if an optional image fails to load.
+      }
+    }),
+  );
 
-  if (spec.bg.src) {
+  function drawBackground() {
+    ctx.fillStyle = spec.bg.color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!spec.bg.src) return;
+
     const bg = images.get(spec.bg.src);
-    if(bg) {
-      const scale = Math.max(
-        canvas.width / bg.width,
-        canvas.height / bg.height,
-      )
+    if (!bg) return;
 
-      const width = bg.width * scale ;
-      const height = bg.height * scale;
+    const scale = Math.max(canvas.width / bg.width, canvas.height / bg.height);
+    const width = bg.width * scale;
+    const height = bg.height * scale;
 
-      ctx.drawImage(
-        bg,
-        (canvas.width - width) / 2,
-        (canvas.height - height) / 2,
-        width,
-        height,
-      );
+    ctx.drawImage(
+      bg,
+      (canvas.width - width) / 2,
+      (canvas.height - height) / 2,
+      width,
+      height,
+    );
+  }
+
+  function drawLayers(seconds: number) {
+    for (const layer of [...spec.layers].sort((a, b) => a.z - b.z)) {
+      const image = images.get(layer.src);
+      if (!image) continue;
+
+      const width = (canvas.width * layer.w) / 100;
+      const height = (width * image.height) / image.width;
+      const x = (canvas.width * layer.x) / 100;
+      const y = (canvas.height * layer.y) / 100;
+      const motion = sampleLayerMotion(layer, seconds, canvas.width);
+
+      ctx.save();
+      ctx.translate(x, y);
+      // rotate is specified in degrees
+      ctx.rotate((layer.rotate * Math.PI) / 180);
+      ctx.translate(motion.x, motion.y);
+
+      if (layer.motion.kind === "sway") {
+        ctx.translate(0, -height / 2);
+        ctx.rotate((motion.rotation * Math.PI) / 180);
+        ctx.translate(0, height / 2);
+      } else {
+        ctx.rotate((motion.rotation * Math.PI) / 180);
+      }
+
+      ctx.scale(motion.scale, motion.scale);
+      ctx.drawImage(image, -width / 2, -height / 2, width, height);
+      ctx.restore();
     }
   }
 
-  for (const layer of [...spec.layers].sort((a,b) => a.z - b.z)){
-    const image = images.get(layer.src);
-    if(!image) continue;
+  function drawSlots() {
+    for (const slot of [...spec.slots].sort((a, b) => a.z - b.z)) {
+      const value = slotText(slot.key, texts);
+      if (!value) continue;
 
-    const width = canvas.width * layer.w / 100;
-    const height = width * image.height / image.width;
-    
-    ctx.save();
-    ctx.translate(canvas.width * layer.x / 100, canvas.height * layer.y / 100);
-    ctx.rotate(layer.rotate * Math.PI / 180);
-    ctx.drawImage(image,-width/2 , -height / 2 , width, height)
-    ctx.restore();
-  }
+      ctx.save();
+      ctx.fillStyle = slot.color;
+      ctx.textAlign = slot.align;
+      ctx.textBaseline = "middle";
+      ctx.font = `${slot.weight} ${
+        (slot.size * canvas.width) / 100
+      }px ${SLOT_FONTS[slot.font]}`;
 
-  for (const slot of [...spec.slots].sort((a,b) => a.z - b.z)) {
-    const value = slotText(slot.key , texts);
+      const text = slot.upper ? value.toUpperCase() : value;
+      const x = (canvas.width * slot.x) / 100;
+      const centerY = (canvas.height * slot.y) / 100;
+      const maxWidth = (canvas.width * slot.w) / 100;
+      const fontSize = (slot.size * canvas.width) / 100;
+      const lines = wrapCanvasText(ctx, text, maxWidth);
 
-    if(!value) continue;
+      lines.forEach((line, index) => {
+        const y =
+          centerY + (index - (lines.length - 1) / 2) * fontSize * 1.15;
+        ctx.fillText(line, x, y);
+      });
 
-    ctx.save();
-    ctx.fillStyle = slot.color;
-    ctx.textAlign = slot.align;
-    ctx.textBaseline  = "middle";
-    ctx.font = `${slot.weight} ${slot.size * canvas.width / 100}px ${SLOT_FONTS[slot.font]}`;
-
-    const text = slot.upper ? value.toUpperCase() : value;
-    const x = canvas.width * slot.x / 100;
-    const centerY = canvas.height * slot.y / 100;
-    const maxWidth = canvas.width * slot.w / 100;
-    const fontSize = slot.size * canvas.width / 100;
-    const lines = wrapCanvasText(ctx , text , maxWidth);
-
-    lines.forEach((line, index) => {
-      const y = centerY + (index - (lines.length - 1) / 2) * fontSize * 1.15;
-      ctx.fillText(line , x , y);      
-    });
-    ctx.restore();
+      ctx.restore();
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy =16;
-  return texture;
+  texture.anisotropy = 16;
+
+  function redraw(seconds: number) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    drawLayers(seconds);
+    drawSlots();
+    texture.needsUpdate = true;
+  }
+
+  // Paint a complete card before it is shown.
+  redraw(0);
+
+  return { texture, redraw };
 }
 export interface LetterContent {
   guest: string;
@@ -840,6 +928,16 @@ function Letter({
   const fullHeight = paperWidth / aspect;
   const halfHeight = fullHeight / 2;
 
+  const bottomGeometry = useMemo(
+    () => makeHalfGeometry(paperWidth , halfHeight , 0),
+    [paperWidth, halfHeight],
+  );
+
+  const topGeometry = useMemo(
+    () =>  makeHalfGeometry(paperWidth , halfHeight , 0.5),
+    [paperWidth , halfHeight],
+  );
+
   const topTexture = useMemo(() => {
     const texture = map.clone();
     texture.repeat.set(1,0.5);
@@ -897,21 +995,23 @@ function Letter({
 
   return (
     <group ref={paper} position={[0 , LETTER_Y0 , Z_LETTER]} >
-      <mesh position={[0 , -halfHeight / 2 , 0]} castShadow receiveShadow >
-        <planeGeometry args={[paperWidth , halfHeight , 8 , 4]} />
-        <meshBasicMaterial 
-          map={bottomTexture}
-          side={THREE.DoubleSide}
-        />
+      <mesh
+        geometry={bottomGeometry}
+        position={[0, -halfHeight / 2, 0]}
+        castShadow
+        receiveShadow
+      >
+        <meshBasicMaterial map={map} side={THREE.DoubleSide} />
       </mesh>
 
       <group ref={hinge} position={[0 , 0 , 0]} rotation={[Math.PI , 0 , 0]} >
-        <mesh position={[0 , halfHeight / 2 , 0]} castShadow receiveShadow >
-          <planeGeometry args={[paperWidth , halfHeight , 8 , 4]} />
-          <meshBasicMaterial 
-            map={topTexture}
-            side={THREE.DoubleSide}
-          />
+        <mesh
+          geometry={topGeometry}
+          position={[0, halfHeight / 2, 0]}
+          castShadow
+          receiveShadow
+        >
+          <meshBasicMaterial map={map} side={THREE.DoubleSide} />
         </mesh>
 
         <mesh
@@ -979,6 +1079,23 @@ function pocketGeometry() {
   return g;
 }
 
+
+
+function makeHalfGeometry(
+  width : number,
+  height : number,
+  vOffset : number,
+) {
+  const geometry = new THREE.PlaneGeometry(width,height , 8 , 4);
+  const uv = geometry.attributes.uv;
+  
+  for (let i = 0 ; i < uv.count ; i++) {
+    uv.setY(i, uv.getY(i) * 0.5 + vOffset);
+  } 
+  uv.needsUpdate = true;
+  return geometry;
+}
+
 /* ---------------- scene ---------------- */
 
 
@@ -1016,27 +1133,59 @@ function Scene({
     const letterTex = useMemo(() => makeLetterTexture(letter, sealColor), [letter, sealColor]);
     const [ loadedCards , setLoadedCards ] = useState<{
       spec : CardSpec;
-      texture : THREE.CanvasTexture;
+      renderer : CardTextureRenderer;
     } | null>(null);
-
     const [ cardOpen , setCardOpen ] = useState(false);
+    const [ cardMotionActive , setCardMotionActive ] = useState(false);
+
+    const cardRenderer = loadedCards?.spec === cardSpec ? loadedCards?.renderer : null;
+
+    const cardTex = cardRenderer?.texture ?? null;
+
+    const animationStart = useRef<number | null>(null);
+    const lastAnimationFrame = useRef(0);
+
+    useEffect(() => {
+      animationStart.current = null;
+      lastAnimationFrame.current = 0;
+    },[cardMotionActive]);
+
+    useFrame(({ clock }) => {
+      if(!cardMotionActive || !cardRenderer) return;
+
+      const now = clock.elapsedTime;
+      if(animationStart.current === null)   animationStart.current = now;
+      if(now - lastAnimationFrame.current < 1/24)  return;
+      lastAnimationFrame.current = now;
+      cardRenderer.redraw(now- animationStart.current);
+    }) 
+    useEffect(() => {
+      if(!cardOpen) return;
+
+      const timer = window.setTimeout(() => {
+        setCardMotionActive(true);
+      },800);
+
+      return () => window.clearTimeout(timer);
+    },[cardOpen]);
+
+
     useEffect(() => {
       let cancelled = false;
       if(!cardSpec) return;
 
-      void makeCardTexture(cardSpec , cardTexts).then((texture) => {
+      void makeCardTexture(cardSpec , cardTexts).then((renderer) => {
         if(cancelled) {
-          texture.dispose();
+          renderer.texture.dispose();
           return;
         }
-        setLoadedCards({ spec : cardSpec , texture });
+        setLoadedCards({ spec : cardSpec , renderer });
       });
       return () => {
         cancelled = true;
       };
     } , [cardSpec,cardTexts]);
 
-    const cardTex = loadedCards?.spec === cardSpec ? loadedCards?.texture : null;
     const openedRef = useRef(onOpened);
     useEffect(() => {
         openedRef.current = onOpened;
@@ -1150,6 +1299,7 @@ export default function Envelope3D({
   cardTexts,
   onOpened,
   fill,
+  onOpenStart,
 }: {
   theme: EnvelopeTheme;
   letter: LetterContent;
@@ -1158,6 +1308,7 @@ export default function Envelope3D({
   cardTexts: CardTexts;
   onOpened?: () => void;
   fill?: boolean;
+  onOpenStart?: () => void; 
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1175,7 +1326,11 @@ export default function Envelope3D({
           accent={accent}
           cardSpec={cardSpec}
           cardTexts={cardTexts}
-          onOpen={() => setOpen(true)}
+          onOpen={() => {
+            if(open) return;
+            setOpen(true);
+            onOpenStart?.();
+          }}
           onOpened={onOpened}
         />
       </Canvas>

@@ -1,3 +1,4 @@
+import type { MusicPack } from "@/src/lib/music";
 
 export type Design = {
     v : 1;
@@ -9,6 +10,7 @@ export type Design = {
     ornament?: boolean;
     divider?: string;
     motion?: "off" | "subtle";
+    music?: MusicPack; 
 };
 
 export interface newProject {

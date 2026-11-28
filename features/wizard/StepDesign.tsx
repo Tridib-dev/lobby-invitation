@@ -5,6 +5,8 @@ import { ENVELOPE_THEMES } from "@/src/envelopes/theme";
 import type { Design } from "@/src/lib/projectsClient";
 import type { Draft } from "./types";
 import CardPicker from "../card/CardPicker";
+import MusicPicker from "../music/MusicPicker";
+
 
 function withDesign(d : Design , patch : Partial<Design>) : Design {
     const next = { ...d , ...patch } as Record<string , unknown>;
@@ -85,6 +87,7 @@ export default function StepDesign({
                     ))}
                 </div>
             </div>
+            <MusicPicker value={d.music} onChange={(m) => set({ music : m })} />
          </>
     );
 }
