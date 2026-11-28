@@ -11,7 +11,7 @@ import { formatWhen } from "@/src/cards/format";
 import { useImagePreload } from "@/features/card/useImagePreload";
 import { specUrls } from "@/src/cards/spec";
 import { useAudioLoop } from "@/features/music/useLoopAudio";
-import SoundToggle from "@/features/music/SoundToggle";
+import NowPlaying from "@/features/music/NowPlaying";
 
 
 
@@ -80,8 +80,8 @@ export default function InviteExperience({ invite , fill } : { invite : Shown ; 
                 fill={fill}
                 onOpenStart={() => sound.play()}
             />     
-            {sound.ready && (
-                <SoundToggle muted={sound.muted} appleUrl={sound.appleUrl} onToggle={sound.toggleMute} />
+            {sound.playing && music && (
+                <NowPlaying music={music} muted={sound.muted} appleUrl={sound.appleUrl} onToggleMute={sound.toggleMute} getProgress={sound.getProgress} />
             )}       
         </div>
     );
